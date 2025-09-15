@@ -2,34 +2,37 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Sagittarius Security Management System</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { margin: 0; font-family: system-ui, sans-serif; background: #f6f8fa; }
+    body { margin: 0; font-family: system-ui,sans-serif; background: #f6f8fa; }
     .container { display: flex; min-height: 100vh; }
     .sidebar {
-      width: 240px; background: #152238; color: #fff; display: flex; flex-direction: column;
+      width: 240px; background: blue; color: #fff; display: flex; flex-direction: column;
       padding: 2rem 1rem; min-height: 100vh;
     }
-    .sidebar-title { font-size: 1.4rem; font-weight: bold; margin-bottom: 2.5rem; text-align: center; }
+    .sidebar-title { font-size: 18; font-weight: bold; margin-bottom: 2.5rem; text-align: center; }
     .sidebar-links { list-style: none; padding: 0; margin: 0; }
     .sidebar-link {
       display: block; color: #c8d1e1; padding: 0.9rem 1.2rem; border-radius: 0.4rem;
       text-decoration: none; margin-bottom: 0.7rem; font-size: 1.06rem;
       transition: background 0.2s, color 0.2s; cursor: pointer;
     }
-    .sidebar-link.active, .sidebar-link:hover { background: #274472; color: #fff; }
+    .sidebar-link.active, .sidebar-link:hover { background: brown; color: #fff; }
     .main-content { flex: 1; padding: 2rem; background: #f6f8fa; overflow-y: auto; position: relative; }
     .dashboard-header {
       display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1.5rem;
     }
     .dashboard-header h1 { margin: 0; }
     .timestamp {
-      color: #274472; font-size: 1.02rem; background: #e9edf6;
+      color: blue; font-size: 16; background: #e9edf6;
       padding: 0.35rem 0.9rem; border-radius: 1.2rem; box-shadow: 0 2px 8px rgba(30,40,55,0.05);
-      font-weight: 500; display: inline-flex; align-items: center; gap: 0.4rem;
+      font-weight: bold; display: inline-flex; align-items: center; gap: 0.4rem;
       margin-bottom: 1rem;
+      font-style: italic;
     }
     .dashboard-metrics {
       display: flex; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap;
@@ -44,96 +47,64 @@
     .metric-card.incidents { background: linear-gradient(135deg, #e74c3c 60%, #c0392b 100%); }
     .metric-value { font-size: 1.6rem; font-weight: bold; margin-bottom: 0.2rem; }
     .metric-label { font-size: 0.99rem; color: rgba(255,255,255,0.9); }
-    .users-table, .incidents-table, .logs-table {
+    .chart-section { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #e3e7ef; margin-bottom: 1.8rem; padding: 1.2rem 1.2rem 1.5rem 1.2rem;}
+    .chart-title { color: #274472; font-weight: 600; margin-bottom: 0.5rem; }
+    .users-table, .incidents-table, .logs-table, .guards-table {
       width: 100%; border-collapse: collapse; margin-top: 1.2rem; background: #fff; box-shadow: 0 2px 8px #e3e7ef;
       border-radius: 9px; overflow: hidden; font-size: 1.01rem;
     }
-    .users-table thead, .incidents-table thead, .logs-table thead { background: #f6f8fa; color: #274472; }
-    .users-table th, .users-table td, .incidents-table th, .incidents-table td, .logs-table th, .logs-table td {
+    .users-table thead, .incidents-table thead, .logs-table thead, .guards-table thead { background: #f6f8fa; color: #274472; }
+    .users-table th, .users-table td, .incidents-table th, .incidents-table td, .logs-table th, .logs-table td, .guards-table th, .guards-table td {
       padding: 8px 10px; border-bottom: 1px solid #e3e7ef; text-align: left;
     }
-    .users-table th, .incidents-table th, .logs-table th { font-weight: 600; }
-    .users-table tr:last-child td, .incidents-table tr:last-child td, .logs-table tr:last-child td { border-bottom: none; }
-    .users-table tbody tr:hover, .incidents-table tbody tr:hover, .logs-table tbody tr:hover { background: #f9f2f2; }
-    .users-table .action-btns, .incidents-table .action-btns { display: flex; gap: 7px; }
-    .users-table .btn-action, .incidents-table .btn-action {
+    .users-table th, .incidents-table th, .logs-table th, .guards-table th { font-weight: 600; }
+    .users-table tr:last-child td, .incidents-table tr:last-child td, .logs-table tr:last-child td, .guards-table tr:last-child td { border-bottom: none; }
+    .users-table tbody tr:hover, .incidents-table tbody tr:hover, .logs-table tbody tr:hover, .guards-table tbody tr:hover { background: #f9f2f2; }
+    .users-table .action-btns, .incidents-table .action-btns, .guards-table .action-btns { display: flex; gap: 7px; }
+    .users-table .btn-action, .incidents-table .btn-action, .guards-table .btn-action {
       border: none; background: #e9edf6; color: #274472; padding: 4px 11px; border-radius: 4px;
-      cursor: pointer; font-size: 0.98rem; font-weight: 600;
-      transition: background 0.16s, color 0.16s;
+      cursor: pointer; font-size: 0.98rem; font-weight: 600; transition: background 0.16s, color 0.16s;
     }
-    .users-table .btn-action.view, .incidents-table .btn-action.view { background: #4d79ff; color: #fff; }
-    .users-table .btn-action.edit, .incidents-table .btn-action.edit { background: #f39c12; color: #fff; }
-    .users-table .btn-action.delete, .incidents-table .btn-action.delete { background: #e74c3c; color: #fff; }
-    .users-table .btn-action.call { background: #27ae60; color: #fff; }
-    .users-table .btn-action:active, .incidents-table .btn-action:active, .users-table .btn-action.call:active { opacity: 0.8; }
-    .report-download-btn {
-      background: #274472; color: #fff; border: none; border-radius: 5px; padding: 7px 16px; font-size: 1.02rem;
-      margin-bottom: 1.2rem; margin-right: 10px; cursor: pointer; font-weight: 600; transition: background 0.16s;
-    }
-    .report-download-btn:hover { background: #2a5298; }
-    .map-placeholder {
-      background: #e3e7ef;
-      border-radius: 10px;
-      width: 100%;
-      min-height: 180px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #274472;
-    }
-    /* Modal styles */
-    .modal-bg {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(30,40,55,0.23); z-index: 99; display: flex; align-items: center; justify-content: center;
-      animation: fade-in-bg 0.2s;
-    }
-    @keyframes fade-in-bg { from { opacity: 0; } to { opacity: 1; } }
-    .modal {
-      background: #fff; border-radius: 1rem; box-shadow: 0 8px 36px rgba(30,40,55,0.14);
-      padding: 2rem 2rem 1.5rem 2rem; max-width: 400px; width: 98vw; position: relative;
-      animation: fade-in-modal 0.2s; max-height: 90vh; overflow-y: auto; overscroll-behavior: contain;
-    }
-    @keyframes fade-in-modal {
-      from { opacity: 0; transform: translateY(40px);}
-      to { opacity: 1; transform: translateY(0);}
-    }
-    .modal h2 { margin-top: 0; font-size: 1.28rem; color: #274472; }
-    .modal label {
-      font-weight: 500; display: block; margin: 1rem 0 0.12rem 0; color: #274472;
-    }
-    .modal input, .modal textarea, .modal select {
-      width: 100%; padding: 7px 8px; border-radius: 5px; border: 1px solid #c8d1e1; font-size: 1.04rem;
-      margin-bottom: 0.3rem; box-sizing: border-box; background: #f6f8fa; resize: vertical;
-    }
-    .modal input[type="file"] { background: #fff; border: none; margin-bottom: 0.9rem; }
-    .modal .modal-actions {
-      display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;
-    }
-    .modal .modal-actions button {
-      padding: 8px 20px; border-radius: 5px; border: none; font-size: 1.05rem;
-      background: #274472; color: #fff; cursor: pointer; transition: background 0.18s;
-    }
-    .modal .modal-actions button.cancel { background: #bbb; color: #274472; }
-    .modal .modal-actions button:active { opacity: 0.8; }
-    .modal .form-error { color: #e74c3c; font-size: 0.98rem; margin-bottom: 0.4rem; margin-top: 0.2rem; }
-    .modal .modal-close {
-      position: absolute; top: 0.7rem; right: 1.1rem; font-size: 1.3rem; color: #274472;
-      background: none; border: none; cursor: pointer;
-    }
+    .users-table .btn-action.edit, .incidents-table .btn-action.edit, .guards-table .btn-action.edit { background: #f39c12; color: #fff;}
+    .users-table .btn-action.delete, .incidents-table .btn-action.delete, .guards-table .btn-action.delete { background: #e74c3c; color: #fff;}
+    .guards-table .btn-action.shift { background: #274472; color: #fff;}
+    .guards-table .btn-action.duty-on { background: #27ae60; color: #fff;}
+    .guards-table .btn-action.duty-off { background: #e74c3c; color: #fff;}
+    .users-table .btn-action.call, .guards-table .btn-action.call { background: #27ae60; color: #fff;}
+    .map-marker { color: #e74c3c; font-size: 1.2rem; margin-right: 4px; vertical-align: middle;}
+    .report-download-btn { background: #274472; color: #fff; border: none; border-radius: 5px; padding: 7px 16px; font-size: 1.02rem; margin-bottom: 1.2rem; margin-right: 10px; cursor: pointer; font-weight: 600; transition: background 0.16s;}
+    .report-download-btn:hover { background: #2a5298;}
+    .modal-bg { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(30,40,55,0.18); z-index: 999; display: flex; align-items: center; justify-content: center; }
+    .modal { background: #fff; border-radius: 1rem; box-shadow: 0 8px 36px rgba(30,40,55,0.14); padding: 2rem 2rem 1.5rem 2rem; max-width: 400px; width: 98vw; position: relative; max-height: 90vh; overflow-y: auto; }
+    .modal label { font-weight: 500; display: block; margin: 1rem 0 0.12rem 0; color: #274472;}
+    .modal input, .modal textarea, .modal select { width: 100%; padding: 7px 8px; border-radius: 5px; border: 1px solid #c8d1e1; font-size: 1.04rem; margin-bottom: 0.3rem; box-sizing: border-box; background: #f6f8fa; resize: vertical;}
+    .modal .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;}
+    .modal .modal-actions button { padding: 8px 20px; border-radius: 5px; border: none; font-size: 1.05rem; background: #274472; color: #fff; cursor: pointer;}
+    .modal .modal-actions button.cancel { background: #bbb; color: #274472;}
+    .modal .form-error { color: #e74c3c; font-size: 0.98rem; margin-bottom: 0.4rem; margin-top: 0.2rem;}
+    .leaflet-container { height: 120px; width: 100%; margin: 0.4rem 0 0.3rem 0; border-radius: 8px; }
+    .duty-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    .duty-dot.on { background: #27ae60; }
+    .duty-dot.off { background: #e74c3c; }
+    .shift-label { border-radius: 5px; padding: 2px 7px; color: #fff; font-weight: 600; font-size: 0.99em; }
+    .shift-morning { background: #2a5298; }
+    .shift-afternoon { background: #f39c12; }
+    .shift-night { background: #22223b; }
     @media (max-width: 1000px) {
-      .main-content { padding: 0.5rem; }
-      .module-card { min-width: 95vw; max-width: 98vw; }
+      .main-content { padding: 0.5rem;}
       .dashboard-metrics { flex-direction: column; gap: 1rem; }
-      .users-table th, .users-table td, .incidents-table th, .incidents-table td, .logs-table th, .logs-table td { padding: 7px 3px; font-size: 0.97rem; }
+      .guards-table th, .guards-table td, .users-table th, .users-table td, .incidents-table th, .incidents-table td, .logs-table th, .logs-table td { padding: 7px 3px; font-size: 0.97rem;}
     }
   </style>
 </head>
 <body>
   <div class="container">
     <nav class="sidebar">
+       <img src="https://drive.google.com/file/d/1dgeo98YmqHuTdfgby7reJ3fOvIBLygrm/view?usp=drive_link"
+           alt="Sagittarius Security" class="logo-img" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/3/3f/Logo_black_on_white_circle.png'">
       <h2 class="sidebar-title">Sagittarius Security</h2>
       <ul class="sidebar-links">
-        <li><span class="sidebar-link active" data-section="dashboard">Interactive Dashboard</span></li>
+        <li><span class="sidebar-link active" data-section="dashboard">Dashboard</span></li>
         <li><span class="sidebar-link" data-section="incidents">Incident Reporting</span></li>
         <li><span class="sidebar-link" data-section="guards">Guard Tracking</span></li>
         <li><span class="sidebar-link" data-section="users">User Management</span></li>
@@ -144,27 +115,35 @@
     <div id="modal-root"></div>
   </div>
   <script>
-    // --- Data (with localStorage persistence) ---
-    let users = JSON.parse(localStorage.getItem("sagittarius-users") || "[]");
-    let incidents = JSON.parse(localStorage.getItem("sagittarius-incidents") || "[]");
-    let logs = JSON.parse(localStorage.getItem("sagittarius-logs") || "[]");
-
-    // If first time, populate with demo data:
-    if (users.length === 0 && incidents.length === 0 && logs.length === 0) {
-      users = [
-        {id:"1001",name:"Admin",address:"HQ Road",email:"admin@demo.com",phone:"1234567890",role:"Administrator",department:"IT",location:"HQ"},
-        {id:"1002",name:"Jane Doe",address:"West Ave",email:"jane@demo.com",phone:"5551234567",role:"Guard",department:"Operation",location:"North Post"}
-      ];
-      incidents = [
-        {title:"Gate Breach",description:"Unauthorized entry detected",location:"Gate 1",reporter:"Jane Doe",date:"2025-09-14",time:"15:30",attachment:""}
-      ];
-      logs = [{action:"System initialized",timestamp:getNowTimestamp()}];
-      localStorage.setItem("sagittarius-users", JSON.stringify(users));
-      localStorage.setItem("sagittarius-incidents", JSON.stringify(incidents));
-      localStorage.setItem("sagittarius-logs", JSON.stringify(logs));
+    // --- Data Layer ---
+    function getUsers() { return JSON.parse(localStorage.getItem("sagittarius-users") || "[]"); }
+    function getGuards() { return JSON.parse(localStorage.getItem("sagittarius-guards") || "[]"); }
+    function getIncidents() { return JSON.parse(localStorage.getItem("sagittarius-incidents") || "[]"); }
+    function getLogs() { return JSON.parse(localStorage.getItem("sagittarius-logs") || "[]"); }
+    function saveUsers(users) { localStorage.setItem("sagittarius-users", JSON.stringify(users)); }
+    function saveGuards(guards) { localStorage.setItem("sagittarius-guards", JSON.stringify(guards)); }
+    function saveIncidents(incidents) { localStorage.setItem("sagittarius-incidents", JSON.stringify(incidents)); }
+    function saveLogs(logs) { localStorage.setItem("sagittarius-logs", JSON.stringify(logs)); }
+    function addLog(action) {
+      const logs = getLogs();
+      logs.unshift({action, timestamp: getNowTimestamp()});
+      saveLogs(logs);
     }
-
-    // --- Utility Functions (CSV, Logs, Escape, Notification) ---
+    function getNowTimestamp() {
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      return `${dd}/${mm}/${yyyy} ${hh}:${min}:${ss}`;
+    }
+    function escapeHTML(str) {
+      return String(str || '').replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+      });
+    }
     function arrayToCsv(data, columns) {
       const esc = v => `"${String(v === undefined ? "" : v).replace(/"/g, '""')}"`;
       let header = columns.map(c => esc(c.label)).join(',');
@@ -184,617 +163,618 @@
         URL.revokeObjectURL(url);
       }, 100);
     }
-    function addLog(action) {
-      logs.push({
-        action,
-        timestamp: getNowTimestamp()
-      });
-      localStorage.setItem("sagittarius-logs", JSON.stringify(logs));
+    // --- Demo Data Initialization ---
+    if (!localStorage.getItem("sagittarius-users")) {
+      saveUsers([
+        {id:"1001", name:"Admin", address:"HQ Road", email:"admin@demo.com", phone:"1234567890", role:"Administrator", department:"IT", location:"HQ"}
+      ]);
     }
-    function generateUserID() {
-      let max = users.reduce((m, u) => Math.max(m, parseInt(u.id, 10)), 1000);
-      return (isNaN(max) ? 1001 : max+1).toString();
+    if (!localStorage.getItem("sagittarius-guards")) {
+      saveGuards([
+        { name: "John Doe", phone: "08031234567", shift: "Morning", duty: "on", location: "HQ 1", lat: 6.5244, lng: 3.3792 },
+        { name: "Jane Smith", phone: "08035554444", shift: "Night", duty: "off", location: "HQ 2", lat: 6.5987, lng: 3.3991 },
+        { name: "Mike Kelvin", phone: "08031112222", shift: "Afternoon", duty: "on", location: "HQ 1", lat: 6.4551, lng: 3.3841 }
+      ]);
     }
-    function escapeHTML(str) {
-      return String(str || '').replace(/[&<>"']/g, function(m) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
-      });
+    if (!localStorage.getItem("sagittarius-incidents")) {
+      saveIncidents([
+        {title:"Gate Breach", description:"Unauthorized entry detected", location:"Gate 1", reporter:"Jane Smith", date:"2025-09-14", time:"15:30"}
+      ]);
     }
-    // --- Shared Table Renderers ---
-    function renderUserList(divId = 'usersList') {
-      const listDiv = document.getElementById(divId);
-      if (!listDiv) return;
-      if (users.length === 0) {
-        listDiv.innerHTML = "<p style='color:#888;'>No users added yet.</p>";
-        return;
-      }
-      let table = `<table class="users-table"><thead>
-        <tr><th>ID</th><th>Full Name</th><th>Address</th><th>Email</th><th>Phone</th><th>Role</th><th>Department</th><th>Location</th><th>Actions</th></tr>
-        </thead><tbody>`;
-      users.forEach((u, idx) => {
-        table += `<tr>
-          <td>${escapeHTML(u.id)}</td>
-          <td>${escapeHTML(u.name)}</td>
-          <td>${escapeHTML(u.address)}</td>
-          <td>${escapeHTML(u.email)}</td>
-          <td>${escapeHTML(u.phone)}</td>
-          <td>${escapeHTML(u.role)}</td>
-          <td>${escapeHTML(u.department)}</td>
-          <td>${escapeHTML(u.location)}</td>
-          <td>
-            <div class="action-btns">
-              <button class="btn-action call" onclick="callUser('${u.phone}')">Call</button>
-              <button class="btn-action view" onclick="viewUser(${idx})">View</button>
-              <button class="btn-action edit" onclick="editUser(${idx})">Edit</button>
-              <button class="btn-action delete" onclick="deleteUser(${idx})">Delete</button>
-            </div>
-          </td>
-        </tr>`;
-      });
-      table += `</tbody></table>`;
-      listDiv.innerHTML = table;
+    if (!localStorage.getItem("sagittarius-logs")) {
+      saveLogs([{action:"System initialized",timestamp:getNowTimestamp()}]);
     }
-    window.callUser = function(phone) {
-      if (phone && phone.trim()) {
-        window.location.href = 'tel:' + encodeURIComponent(phone.trim());
-      } else {
-        alert('No phone number available for this user.');
-      }
-    };
-    function renderIncidentList(divId = 'incidentReportsList') {
-      const listDiv = document.getElementById(divId);
-      if (!listDiv) return;
-      if (incidents.length === 0) {
-        listDiv.innerHTML = "<p style='color:#888;'>No incidents reported yet.</p>";
-        return;
-      }
-      let table = `<table class="incidents-table"><thead>
-        <tr><th>Title</th><th>Description</th><th>Location</th><th>Reporter</th><th>Date</th><th>Time</th><th>Attachment</th><th>Actions</th></tr>
-        </thead><tbody>`;
-      incidents.forEach((r, idx) => {
-        table += `<tr>
-          <td>${escapeHTML(r.title)}</td>
-          <td>${escapeHTML(r.description)}</td>
-          <td>${escapeHTML(r.location)}</td>
-          <td>${escapeHTML(r.reporter)}</td>
-          <td>${escapeHTML(r.date)}</td>
-          <td>${escapeHTML(r.time)}</td>
-          <td>${r.attachment ? `<a class="attachment-link" href="${r.attachment}" target="_blank">View</a>` : ""}</td>
-          <td>
-            <div class="action-btns">
-              <button class="btn-action view" onclick="viewIncident(${idx})">View</button>
-              <button class="btn-action edit" onclick="editIncident(${idx})">Edit</button>
-              <button class="btn-action delete" onclick="deleteIncident(${idx})">Delete</button>
-            </div>
-          </td>
-        </tr>`;
-      });
-      table += `</tbody></table>`;
-      listDiv.innerHTML = table;
+    // --- Utility ---
+    function getUniqueLocations() {
+      const userLocs = getUsers().map(u => (u.location || '').trim()).filter(Boolean);
+      const guardLocs = getGuards().map(g => {
+        if(g.location && g.location.trim()) return g.location.trim();
+        if(g.lat && g.lng) return `${g.lat.toFixed(4)},${g.lng.toFixed(4)}`;
+        return '';
+      }).filter(Boolean);
+      return Array.from(new Set([...userLocs, ...guardLocs]));
     }
-    function renderLogsList(divId = 'logsList') {
-      const listDiv = document.getElementById(divId);
-      if (!listDiv) return;
-      if (logs.length === 0) {
-        listDiv.innerHTML = "<p style='color:#888;'>No logs yet.</p>";
-        return;
-      }
-      let table = `<table class="logs-table"><thead>
-        <tr><th>Action</th><th>Timestamp</th></tr>
-        </thead><tbody>`;
-      logs.forEach(log => {
-        table += `<tr><td>${escapeHTML(log.action)}</td><td>${escapeHTML(log.timestamp)}</td></tr>`;
-      });
-      table += `</tbody></table>`;
-      listDiv.innerHTML = table;
+    // --- Navigation ---
+    function showSection(section) {
+      const main = document.getElementById('mainContent');
+      while(main.firstChild) main.removeChild(main.firstChild);
+      document.getElementById('modal-root').innerHTML = '';
+      if(section==='dashboard') renderDashboard();
+      if(section==='incidents') renderIncidentReporting();
+      if(section==='guards') renderGuardTracking();
+      if(section==='users') renderUserManagement();
+      if(section==='reports') renderReports();
     }
-    // --- User Modal ---
-    function openUserModal(mode = "add", idx = null) {
-      const modalRoot = document.getElementById('modal-root');
-      let modalTitle = "Add User";
-      let submitBtnText = "Submit";
-      let user = {
-        id: generateUserID(),
-        name: "",
-        address: "",
-        email: "",
-        phone: "",
-        role: "",
-        department: "",
-        location: ""
-      };
-      let disableFields = false;
-      if (mode === "edit" && typeof idx === "number") {
-        modalTitle = "Edit User";
-        submitBtnText = "Save";
-        user = {...users[idx]};
-      } else if (mode === "view" && typeof idx === "number") {
-        modalTitle = "View User";
-        user = {...users[idx]};
-        disableFields = true;
-      }
-      modalRoot.innerHTML = `
-        <div class="modal-bg" id="userModalBg">
-          <form class="modal" id="userModalForm" autocomplete="off">
-            <button type="button" class="modal-close" title="Close" id="userModalCloseBtn">&times;</button>
-            <h2>${modalTitle}</h2>
-            <div class="form-error" id="userModalErr"></div>
-            <label>ID</label>
-            <input type="text" name="id" value="${escapeHTML(user.id)}" readonly style="background:#e9edf6;font-weight:bold;" />
-            <label>Full Name*</label>
-            <input type="text" name="name" required maxlength="80" value="${escapeHTML(user.name)}" ${disableFields ? 'readonly' : ''} />
-            <label>Residential Address*</label>
-            <input type="text" name="address" required maxlength="120" value="${escapeHTML(user.address)}" ${disableFields ? 'readonly' : ''} />
-            <label>Email Address*</label>
-            <input type="email" name="email" required maxlength="80" value="${escapeHTML(user.email)}" ${disableFields ? 'readonly' : ''} />
-            <label>Phone Number*</label>
-            <input type="tel" name="phone" required maxlength="30" value="${escapeHTML(user.phone)}" ${disableFields ? 'readonly' : ''} />
-            <label>Role*</label>
-            <select name="role" required ${disableFields ? 'disabled' : ''}>
-              <option value="">Select Role</option>
-              <option value="Administrator"${user.role === "Administrator" ? " selected" : ""}>Administrator</option>
-              <option value="Operation Manager"${user.role === "Operation Manager" ? " selected" : ""}>Operation Manager</option>
-              <option value="Marketing Manager"${user.role === "Marketing Manager" ? " selected" : ""}>Marketing Manager</option>
-              <option value="HR Manager"${user.role === "HR Manager" ? " selected" : ""}>HR Manager</option>
-              <option value="IT Manager"${user.role === "IT Manager" ? " selected" : ""}>IT Manager</option>
-              <option value="Supervisor"${user.role === "Supervisor" ? " selected" : ""}>Supervisor</option>
-              <option value="Guard"${user.role === "Guard" ? " selected" : ""}>Guard</option>
-              <option value="Safety Manager"${user.role === "Safety Manager" ? " selected" : ""}>Safety Manager</option>
-            </select>
-            <label>Department*</label>
-            <select name="department" required ${disableFields ? 'disabled' : ''}>
-              <option value="">Select Department</option>
-              <option value="HR"${user.department === "HR" ? " selected" : ""}>HR</option>
-              <option value="Operation"${user.department === "Operation" ? " selected" : ""}>Operation</option>
-              <option value="Marketing"${user.department === "Marketing" ? " selected" : ""}>Marketing</option>
-              <option value="IT"${user.department === "IT" ? " selected" : ""}>IT</option>
-              <option value="Safety"${user.department === "Safety" ? " selected" : ""}>Safety</option>
-            </select>
-            <label>Location*</label>
-            <input type="text" name="location" required maxlength="60" value="${escapeHTML(user.location)}" ${disableFields ? 'readonly' : ''} />
-            <div class="modal-actions">
-              <button type="button" class="cancel" id="userModalCancelBtn">${disableFields ? "Close" : "Cancel"}</button>
-              ${disableFields ? "" : `<button type="submit">${submitBtnText}</button>`}
-            </div>
-          </form>
-        </div>
-      `;
-      document.body.style.overflow = 'hidden';
-      function closeModal() {
-        modalRoot.innerHTML = "";
-        document.body.style.overflow = '';
-      }
-      document.getElementById('userModalCloseBtn').onclick = closeModal;
-      document.getElementById('userModalCancelBtn').onclick = closeModal;
-      document.getElementById('userModalBg').onclick = (e) => { if (e.target.id === 'userModalBg') closeModal(); };
-      if (!disableFields) {
-        document.getElementById('userModalForm').onsubmit = function(e) {
-          e.preventDefault();
-          const f = e.target;
-          const err = document.getElementById('userModalErr');
-          err.textContent = "";
-          if (!f.name.value.trim() || !f.address.value.trim() || !f.email.value.trim() ||
-              !f.phone.value.trim() || !f.role.value.trim() || !f.department.value.trim() || !f.location.value.trim()) {
-            err.textContent = "Please fill in all required fields.";
-            return;
-          }
-          if (mode === "add") {
-            users.push({
-              id: user.id,
-              name: f.name.value.trim(),
-              address: f.address.value.trim(),
-              email: f.email.value.trim(),
-              phone: f.phone.value.trim(),
-              role: f.role.value,
-              department: f.department.value,
-              location: f.location.value.trim()
-            });
-            localStorage.setItem("sagittarius-users", JSON.stringify(users));
-            addNotification('New user added.', '👤');
-            addLog('User added: ' + f.name.value.trim());
-          } else if (mode === "edit" && typeof idx === "number") {
-            users[idx] = {
-              id: user.id,
-              name: f.name.value.trim(),
-              address: f.address.value.trim(),
-              email: f.email.value.trim(),
-              phone: f.phone.value.trim(),
-              role: f.role.value,
-              department: f.department.value,
-              location: f.location.value.trim()
-            };
-            localStorage.setItem("sagittarius-users", JSON.stringify(users));
-            addNotification('User updated.', '✏️');
-            addLog('User updated: ' + f.name.value.trim());
-          }
-          closeModal();
-          renderUserList();
-          renderUserList("usersListReport");
-          const userCount = document.getElementById('total-users');
-          if (userCount) userCount.textContent = users.length;
-        }
-      }
-    }
-    window.viewUser = function(idx) { openUserModal("view", idx); };
-    window.editUser = function(idx) { openUserModal("edit", idx); };
-    window.deleteUser = function(idx) {
-      if (confirm("Are you sure you want to delete this user?")) {
-        addLog('User deleted: ' + users[idx].name);
-        users.splice(idx, 1);
-        localStorage.setItem("sagittarius-users", JSON.stringify(users));
-        addNotification('User deleted.', '🗑️');
-        renderUserList();
-        renderUserList("usersListReport");
-        const userCount = document.getElementById('total-users');
-        if (userCount) userCount.textContent = users.length;
-      }
-    };
-    // --- Incident Modal ---
-    function openIncidentModal(mode = "add", idx = null) {
-      const modalRoot = document.getElementById('modal-root');
-      let modalTitle = "Report Incident";
-      let submitBtnText = "Submit";
-      let incident = {
-        title: "",
-        description: "",
-        location: "",
-        reporter: "",
-        date: "",
-        time: "",
-        attachment: ""
-      };
-      let disableFields = false;
-      if (mode === "edit" && typeof idx === "number") {
-        modalTitle = "Edit Incident";
-        submitBtnText = "Save";
-        incident = {...incidents[idx]};
-      } else if (mode === "view" && typeof idx === "number") {
-        modalTitle = "View Incident";
-        incident = {...incidents[idx]};
-        disableFields = true;
-      }
-      modalRoot.innerHTML = `
-        <div class="modal-bg" id="incidentModalBg">
-          <form class="modal" id="incidentModalForm" autocomplete="off">
-            <button type="button" class="modal-close" title="Close" id="incidentModalCloseBtn">&times;</button>
-            <h2>${modalTitle}</h2>
-            <div class="form-error" id="incidentModalErr"></div>
-            <label>Title*</label>
-            <input type="text" name="title" required maxlength="120" value="${escapeHTML(incident.title)}" ${disableFields ? 'readonly' : ''}/>
-            <label>Description*</label>
-            <textarea name="description" required rows="3" maxlength="300" ${disableFields ? 'readonly' : ''}>${escapeHTML(incident.description)}</textarea>
-            <label>Location*</label>
-            <input type="text" name="location" required maxlength="80" value="${escapeHTML(incident.location)}" ${disableFields ? 'readonly' : ''}/>
-            <label>Reporter*</label>
-            <input type="text" name="reporter" required maxlength="60" value="${escapeHTML(incident.reporter)}" ${disableFields ? 'readonly' : ''}/>
-            <label>Date*</label>
-            <input type="date" name="date" required value="${escapeHTML(incident.date)}" ${disableFields ? 'readonly' : ''}/>
-            <label>Time*</label>
-            <input type="time" name="time" required value="${escapeHTML(incident.time)}" ${disableFields ? 'readonly' : ''}/>
-            <label>Attachment</label>
-            ${disableFields
-              ? (incident.attachment ? `<div style="margin-bottom:1rem"><a class="attachment-link" href="${incident.attachment}" target="_blank">View Attachment</a></div>` : `<div style="margin-bottom:1rem;color:#888">No attachment</div>`)
-              : `<input type="file" name="attachment" accept="image/*,.pdf,.doc,.docx,.txt" />`
-            }
-            <div class="modal-actions">
-              <button type="button" class="cancel" id="incidentModalCancelBtn">Close</button>
-              ${disableFields ? "" : `<button type="submit">${submitBtnText}</button>`}
-            </div>
-          </form>
-        </div>
-      `;
-      document.body.style.overflow = 'hidden';
-      function closeModal() {
-        modalRoot.innerHTML = "";
-        document.body.style.overflow = '';
-      }
-      document.getElementById('incidentModalCloseBtn').onclick = closeModal;
-      document.getElementById('incidentModalCancelBtn').onclick = closeModal;
-      document.getElementById('incidentModalBg').onclick = (e) => { if (e.target.id === 'incidentModalBg') closeModal(); };
-      if (!disableFields) {
-        document.getElementById('incidentModalForm').onsubmit = function(e) {
-          e.preventDefault();
-          const f = e.target;
-          const err = document.getElementById('incidentModalErr');
-          err.textContent = "";
-          if (!f.title.value.trim() || !f.description.value.trim() || !f.location.value.trim() ||
-              !f.reporter.value.trim() || !f.date.value || !f.time.value) {
-            err.textContent = "Please fill in all required fields.";
-            return;
-          }
-          let attachmentURL = "";
-          const file = f.attachment ? f.attachment.files[0] : null;
-          if (file) {
-            attachmentURL = URL.createObjectURL(file);
-          }
-          if (mode === "add") {
-            incidents.unshift({
-              title: f.title.value.trim(),
-              description: f.description.value.trim(),
-              location: f.location.value.trim(),
-              reporter: f.reporter.value.trim(),
-              date: f.date.value,
-              time: f.time.value,
-              attachment: attachmentURL
-            });
-            localStorage.setItem("sagittarius-incidents", JSON.stringify(incidents));
-            addNotification('New incident reported.', '🚨');
-            addLog('Incident reported: ' + f.title.value.trim());
-          } else if (mode === "edit" && typeof idx === "number") {
-            let originalAttachment = incidents[idx].attachment;
-            incidents[idx] = {
-              title: f.title.value.trim(),
-              description: f.description.value.trim(),
-              location: f.location.value.trim(),
-              reporter: f.reporter.value.trim(),
-              date: f.date.value,
-              time: f.time.value,
-              attachment: attachmentURL || originalAttachment
-            };
-            localStorage.setItem("sagittarius-incidents", JSON.stringify(incidents));
-            addNotification('Incident updated.', '✏️');
-            addLog('Incident updated: ' + f.title.value.trim());
-          }
-          closeModal();
-          renderIncidentList();
-          renderIncidentList("incidentReportsListReport");
-          const incCount = document.getElementById('total-incidents');
-          if (incCount) incCount.textContent = incidents.length;
-        };
-      }
-    }
-    window.viewIncident = function(idx) { openIncidentModal("view", idx); };
-    window.editIncident = function(idx) { openIncidentModal("edit", idx); };
-    window.deleteIncident = function(idx) {
-      if (confirm("Are you sure you want to delete this incident?")) {
-        addLog('Incident deleted: ' + incidents[idx].title);
-        incidents.splice(idx, 1);
-        localStorage.setItem("sagittarius-incidents", JSON.stringify(incidents));
-        addNotification('Incident deleted.', '🗑️');
-        renderIncidentList();
-        renderIncidentList("incidentReportsListReport");
-        const incCount = document.getElementById('total-incidents');
-        if (incCount) incCount.textContent = incidents.length;
-      }
-    };
-    // --- Notification logic (bell, panel) ---
-    let notifications = [];
-    let unseenNotifications = false;
-    function addNotification(message, icon) {
-      const now = new Date();
-      notifications.unshift({
-        message,
-        icon,
-        time: now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-        seen: false
-      });
-      unseenNotifications = true;
-      updateNotificationUI();
-    }
-    function updateNotificationUI() {
-      const notificationBell = document.getElementById('notificationBell');
-      const notificationsPanel = document.getElementById('notificationsPanel');
-      const notificationsList = document.getElementById('notificationsList');
-      if (!notificationBell || !notificationsPanel || !notificationsList) return;
-      if (unseenNotifications && notifications.length > 0) {
-        notificationBell.classList.add('active');
-      } else {
-        notificationBell.classList.remove('active');
-      }
-      notificationsList.innerHTML = notifications.length === 0
-        ? '<p style="color:#888;padding:1rem 0;">No notifications yet.</p>'
-        : notifications.map(n =>
-            `<div class="notification-item">
-              <span class="notification-icon">${n.icon}</span>
-              <span>${n.message}</span>
-              <span class="notification-time">${n.time}</span>
-            </div>`
-          ).join('');
-    }
-    function setupNotificationBell() {
-      const notificationBell = document.getElementById('notificationBell');
-      const notificationsPanel = document.getElementById('notificationsPanel');
-      if (!notificationBell || !notificationsPanel) return;
-      notificationBell.onclick = (e) => {
-        notificationsPanel.classList.toggle('visible');
-        notifications = notifications.map(n => ({...n, seen: true}));
-        unseenNotifications = false;
-        updateNotificationUI();
-        e.stopPropagation();
-      };
-      window.addEventListener('click', function(event){
-        if (!notificationBell.contains(event.target) && !notificationsPanel.contains(event.target)) {
-          notificationsPanel.classList.remove('visible');
-        }
-      });
-    }
-    // --- Timestamp ---
-    function getNowTimestamp() {
-      const now = new Date();
-      const dd = String(now.getDate()).padStart(2, '0');
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const yyyy = now.getFullYear();
-      const hh = String(now.getHours()).padStart(2, '0');
-      const min = String(now.getMinutes()).padStart(2, '0');
-      const ss = String(now.getSeconds()).padStart(2, '0');
-      return `${dd}/${mm}/${yyyy} ${hh}:${min}:${ss}`;
-    }
-    // --- Guard Tracking Placeholder ---
-    function renderGuardTracking() {
-      return `
-        <div class="map-placeholder">
-          <span>Guard map/tracking features placeholder</span>
-        </div>
-        <ul style="margin:1rem 0 0 0;padding:0;list-style:none;">
-          <li>Guard 1 - Active</li>
-          <li>Guard 2 - On Duty</li>
-          <li>Guard 3 - Off Duty</li>
-        </ul>
-      `;
-    }
-    // --- Navigation and Page Rendering ---
-    const mainContent = document.getElementById("mainContent");
-    const links = document.querySelectorAll('.sidebar-link');
-    function renderPage(section) {
-      let html = "";
-      if (section === "dashboard") {
-        html = `
-          <div>
-            <div class="dashboard-header">
-              <h1>Interactive Dashboard</h1>
-              <div class="timestamp" id="dashboardTimestamp">&#128337; <span id="timestampText"></span></div>
-            </div>
-            <div class="dashboard-metrics">
-              <div class="metric-card users">
-                <div class="metric-value" id="total-users">${users.length}</div>
-                <div class="metric-label">Total Users</div>
-              </div>
-              <div class="metric-card guards">
-                <div class="metric-value" id="total-guards">12</div>
-                <div class="metric-label">Total Guards</div>
-              </div>
-              <div class="metric-card locations">
-                <div class="metric-value" id="total-locations">5</div>
-                <div class="metric-label">Locations</div>
-              </div>
-              <div class="metric-card incidents">
-                <div class="metric-value" id="total-incidents">${incidents.length}</div>
-                <div class="metric-label">Incidents</div>
-              </div>
-            </div>
-            <p>Welcome to Sagittarius Security Services Management System!</p>
-            <div class="notification-bell" id="notificationBell" title="Notifications"
-              style="position:fixed;top:18px;right:38px;z-index:99;">
-              <span class="bell-icon">&#128276;</span>
-              <span class="bell-dot" id="notificationDot"></span>
-            </div>
-            <div class="notifications-panel" id="notificationsPanel"
-              style="position:fixed;top:60px;right:24px;z-index:100;">
-              <div class="notifications-title">Notifications</div>
-              <div id="notificationsList"></div>
-            </div>
-          </div>`;
-      }
-      if (section === "incidents") {
-        html = `
-          <div>
-            <div class="dashboard-header">
-              <h1>Incident Reporting</h1>
-              <div class="timestamp" id="dashboardTimestamp">&#128337; <span id="timestampText"></span></div>
-            </div>
-            <button id="addIncidentBtn" style="margin-bottom:1rem;background:#27ae60;color:#fff;font-weight:600;">+ Report Incident</button>
-            <div id="incidentReportsList"></div>
-          </div>`;
-      }
-      if (section === "guards") {
-        html = `
-          <div>
-            <div class="dashboard-header">
-              <h1>Guard Tracking</h1>
-              <div class="timestamp" id="dashboardTimestamp">&#128337; <span id="timestampText"></span></div>
-            </div>
-            ${renderGuardTracking()}
-          </div>`;
-      }
-      if (section === "users") {
-        html = `
-          <div>
-            <div class="dashboard-header">
-              <h1>User Management</h1>
-              <div class="timestamp" id="dashboardTimestamp">&#128337; <span id="timestampText"></span></div>
-            </div>
-            <button id="addUserBtn" style="margin-bottom:1rem;background:#27ae60;color:#fff;font-weight:600;">+ Add User</button>
-            <div id="usersList"></div>
-          </div>`;
-      }
-      if (section === "reports") {
-        html = `
-          <div>
-            <div class="dashboard-header">
-              <h1>System Reports</h1>
-              <div class="timestamp" id="dashboardTimestamp">&#128337; <span id="timestampText"></span></div>
-            </div>
-            <div>
-              <button class="report-download-btn" id="downloadIncidentsBtn">Download Incidents (.csv)</button>
-              <button class="report-download-btn" id="downloadUsersBtn">Download Users (.csv)</button>
-              <button class="report-download-btn" id="downloadLogsBtn">Download Logs (.csv)</button>
-            </div>
-            <h4 style="margin-top:1.2rem;">Incidents Table</h4>
-            <div id="incidentReportsListReport"></div>
-            <h4 style="margin-top:1.2rem;">Users Table</h4>
-            <div id="usersListReport"></div>
-            <h4 style="margin-top:1.2rem;">Logs</h4>
-            <div id="logsList"></div>
-          </div>`;
-      }
-      mainContent.innerHTML = html;
-      // Timestamp update
-      function updateTimestamp() {
-        const el = document.getElementById('timestampText');
-        if (el) el.textContent = getNowTimestamp();
-      }
-      updateTimestamp();
-      setInterval(updateTimestamp, 1000);
-      // Setup notification panel if present
-      updateNotificationUI();
-      setupNotificationBell();
-      // Per-page setup
-      if (section === "incidents") {
-        document.getElementById('addIncidentBtn').onclick = function() { openIncidentModal('add', null); };
-        renderIncidentList();
-      }
-      if (section === "users") {
-        document.getElementById("addUserBtn").onclick = function() { openUserModal("add", null); };
-        renderUserList();
-      }
-      if (section === "reports") {
-        renderIncidentList("incidentReportsListReport");
-        renderUserList("usersListReport");
-        renderLogsList();
-        document.getElementById('downloadIncidentsBtn').onclick = function() {
-          const cols = [
-            {label: "Title", key: "title"},
-            {label: "Description", key: "description"},
-            {label: "Location", key: "location"},
-            {label: "Reporter", key: "reporter"},
-            {label: "Date", key: "date"},
-            {label: "Time", key: "time"},
-            {label: "Attachment", key: "attachment"}
-          ];
-          downloadCsv("incidents.csv", arrayToCsv(incidents, cols));
-        };
-        document.getElementById('downloadUsersBtn').onclick = function() {
-          const cols = [
-            {label: "ID", key: "id"},
-            {label: "Full Name", key: "name"},
-            {label: "Address", key: "address"},
-            {label: "Email", key: "email"},
-            {label: "Phone", key: "phone"},
-            {label: "Role", key: "role"},
-            {label: "Department", key: "department"},
-            {label: "Location", key: "location"}
-          ];
-          downloadCsv("users.csv", arrayToCsv(users, cols));
-        };
-        document.getElementById('downloadLogsBtn').onclick = function() {
-          const cols = [
-            {label: "Action", key: "action"},
-            {label: "Timestamp", key: "timestamp"}
-          ];
-          downloadCsv("logs.csv", arrayToCsv(logs, cols));
-        };
-      }
-    }
-    // Sidebar navigation
-    links.forEach(link => {
-      link.addEventListener('click', () => {
-        links.forEach(l => l.classList.remove('active'));
-        link.classList.add('active');
-        renderPage(link.getAttribute('data-section'));
+    document.querySelectorAll('.sidebar-link').forEach(link => {
+      link.addEventListener('click', function() {
+        document.querySelectorAll('.sidebar-link').forEach(l=>l.classList.remove('active'));
+        this.classList.add('active');
+        showSection(this.getAttribute('data-section'));
       });
     });
-    // Initial load
-    renderPage('dashboard');
+
+    // --- Dashboard with Trend and Bar Chart ---
+    function renderDashboard() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `
+        <div class="dashboard-header">
+          <h1>Dashboard</h1>
+          <div class="timestamp">&#128337; <span id="dashboardTimestamp"></span></div>
+        </div>
+        <div class="dashboard-metrics" id="dashboardMetrics"></div>
+        <div class="chart-section">
+          <div class="chart-title">Incident Reports Trend by Month</div>
+          <canvas id="incidentTrendChart" height="80"></canvas>
+        </div>
+        <div class="chart-section">
+          <div class="chart-title">Number of Unique Locations by Month (from Incidents)</div>
+          <canvas id="locationBarChart" height="90"></canvas>
+        </div>
+      `;
+      function renderMetrics() {
+        const users = getUsers(), guards = getGuards(), incidents = getIncidents(), locations = getUniqueLocations();
+        document.getElementById("dashboardMetrics").innerHTML = `
+          <div class="metric-card users">
+            <div class="metric-value">${users.length}</div>
+            <div class="metric-label">Total Users</div>
+          </div>
+          <div class="metric-card guards">
+            <div class="metric-value">${guards.length}</div>
+            <div class="metric-label">Total Guards</div>
+          </div>
+          <div class="metric-card locations">
+            <div class="metric-value">${locations.length}</div>
+            <div class="metric-label">Total Locations</div>
+          </div>
+          <div class="metric-card incidents">
+            <div class="metric-value">${incidents.length}</div>
+            <div class="metric-label">Total Incidents</div>
+          </div>
+        `;
+      }
+      function updateDashboardTimestamp() {
+        document.getElementById('dashboardTimestamp').textContent = getNowTimestamp();
+      }
+      renderMetrics();
+      updateDashboardTimestamp();
+      setInterval(updateDashboardTimestamp, 1000);
+      renderDashboardCharts();
+    }
+    function renderDashboardCharts() {
+      // --- Incident Trend Line Chart ---
+      const incidents = getIncidents();
+      // Group incidents by YYYY-MM
+      const monthlyCount = {};
+      incidents.forEach(i => {
+        const key = (i.date || "").slice(0,7) || "Unknown";
+        monthlyCount[key] = (monthlyCount[key]||0) + 1;
+      });
+      // Sort months chronologically (take the last 12 months)
+      const months = Object.keys(monthlyCount).filter(m=>m!=="Unknown").sort();
+      const displayMonths = months.slice(-12);
+      const incidentCounts = displayMonths.map(m=>monthlyCount[m]);
+      if(displayMonths.length === 0) {
+        const now = new Date();
+        const m = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+        displayMonths.push(m);
+        incidentCounts.push(0);
+      }
+      const monthLabels = displayMonths.map(m=> {
+        const [y,mo] = m.split('-');
+        return `${mo}/${y}`;
+      });
+      const ctx1 = document.getElementById('incidentTrendChart').getContext('2d');
+      if(window._incidentTrendChart) window._incidentTrendChart.destroy();
+      window._incidentTrendChart = new Chart(ctx1, {
+        type: 'line',
+        data: {
+          labels: monthLabels,
+          datasets: [{
+            label: 'Incidents',
+            data: incidentCounts,
+            fill: true,
+            borderColor: '#e74c3c',
+            backgroundColor: 'rgba(231,76,60,0.08)',
+            pointBackgroundColor: '#e74c3c'
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {display: false},
+            title: {display: false}
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
+          }
+        }
+      });
+
+      // --- Locations by Month Bar Chart (number of unique locations each month from incidents) ---
+      const locMonthMap = {};
+      incidents.forEach(i => {
+        const month = (i.date || "").slice(0,7) || "Unknown";
+        if(!locMonthMap[month]) locMonthMap[month] = new Set();
+        if(i.location && i.location.trim()) locMonthMap[month].add(i.location.trim());
+      });
+      const locMonths = Object.keys(locMonthMap).filter(m=>m!=="Unknown").sort().slice(-12);
+      const locMonthCounts = locMonths.map(m=>locMonthMap[m].size);
+      const locMonthLabels = locMonths.map(m=> {
+        const [y,mo] = m.split('-');
+        return `${mo}/${y}`;
+      });
+      const ctx2 = document.getElementById('locationBarChart').getContext('2d');
+      if(window._locationBarChart) window._locationBarChart.destroy();
+      window._locationBarChart = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: locMonthLabels.length ? locMonthLabels : ['-'],
+          datasets: [{
+            label: 'Unique Locations',
+            data: locMonthCounts.length ? locMonthCounts : [0],
+            backgroundColor: '#2a5298'
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {display: false},
+            title: {display: false}
+          },
+          scales: {
+            y: { beginAtZero: true, stepSize: 1, precision: 0 }
+          }
+        }
+      });
+    }
+
+    // --- Incident Reporting ---
+    function renderIncidentReporting() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `
+        <div class="dashboard-header">
+          <h1>Incident Reporting</h1>
+          <div class="timestamp">&#128337; <span id="incidentTimestamp"></span></div>
+        </div>
+        <button style="margin-bottom:1rem;background:#27ae60;color:#fff;font-weight:600;" onclick="openIncidentModal()">+ Report Incident</button>
+        <div id="incidentReportsList"></div>
+      `;
+      function renderIncidentList() {
+        const incidents = getIncidents();
+        const listDiv = document.getElementById('incidentReportsList');
+        if (!listDiv) return;
+        if (incidents.length === 0) {
+          listDiv.innerHTML = "<p style='color:#888;'>No incidents reported yet.</p>";
+          return;
+        }
+        let table = `<table class="incidents-table"><thead>
+          <tr><th>Title</th><th>Description</th><th>Location</th><th>Reporter</th><th>Date</th><th>Time</th><th>Actions</th></tr>
+          </thead><tbody>`;
+        incidents.forEach((r, idx) => {
+          table += `<tr>
+            <td>${escapeHTML(r.title)}</td>
+            <td>${escapeHTML(r.description)}</td>
+            <td>${escapeHTML(r.location)}</td>
+            <td>${escapeHTML(r.reporter)}</td>
+            <td>${escapeHTML(r.date)}</td>
+            <td>${escapeHTML(r.time)}</td>
+            <td>
+              <div class="action-btns">
+                <button class="btn-action edit" onclick="editIncident(${idx})">Edit</button>
+                <button class="btn-action delete" onclick="deleteIncident(${idx})">Delete</button>
+              </div>
+            </td>
+          </tr>`;
+        });
+        table += `</tbody></table>`;
+        listDiv.innerHTML = table;
+      }
+      function updateIncidentTimestamp() {
+        document.getElementById('incidentTimestamp').textContent = getNowTimestamp();
+      }
+      renderIncidentList();
+      updateIncidentTimestamp();
+      setInterval(updateIncidentTimestamp, 1000);
+      window.openIncidentModal = function(idx) {
+        const incidents = getIncidents();
+        const isEdit = typeof idx === "number";
+        const i = isEdit ? {...incidents[idx]} : {title:"",description:"",location:"",reporter:"",date:"",time:""};
+        document.getElementById("modal-root").innerHTML = `
+          <div class="modal-bg" id="incidentModalBg">
+            <form class="modal" id="incidentModalForm">
+              <h2>${isEdit ? "Edit Incident" : "Report Incident"}</h2>
+              <div class="form-error" id="incidentModalErr"></div>
+              <label>Title*</label>
+              <input name="title" value="${escapeHTML(i.title)}" required/>
+              <label>Description*</label>
+              <textarea name="description" required>${escapeHTML(i.description)}</textarea>
+              <label>Location*</label>
+              <input name="location" value="${escapeHTML(i.location)}" required/>
+              <label>Reporter*</label>
+              <input name="reporter" value="${escapeHTML(i.reporter)}" required/>
+              <label>Date*</label>
+              <input type="date" name="date" value="${escapeHTML(i.date)}" required/>
+              <label>Time*</label>
+              <input type="time" name="time" value="${escapeHTML(i.time)}" required/>
+              <div class="modal-actions">
+                <button type="button" class="cancel" onclick="closeModal()">Cancel</button>
+                <button type="submit">${isEdit?"Save":"Submit"}</button>
+              </div>
+            </form>
+          </div>
+        `;
+        document.body.style.overflow = 'hidden';
+        document.getElementById("incidentModalForm").onsubmit = function(e) {
+          e.preventDefault();
+          const f = e.target;
+          const incObj = {
+            title: f.title.value.trim(),
+            description: f.description.value.trim(),
+            location: f.location.value.trim(),
+            reporter: f.reporter.value.trim(),
+            date: f.date.value,
+            time: f.time.value
+          };
+          if (Object.values(incObj).some(v=>!v)) {
+            document.getElementById('incidentModalErr').textContent = "All fields required";
+            return;
+          }
+          if (isEdit) incidents[idx] = incObj;
+          else incidents.unshift(incObj);
+          saveIncidents(incidents);
+          closeModal();
+          renderIncidentList();
+        };
+        document.getElementById("incidentModalBg").onclick = function(e) {
+          if (e.target.id === "incidentModalBg") closeModal();
+        };
+      };
+      window.editIncident = function(idx) { openIncidentModal(idx); };
+      window.deleteIncident = function(idx) {
+        if (!confirm("Delete this incident?")) return;
+        const incidents = getIncidents();
+        incidents.splice(idx,1);
+        saveIncidents(incidents);
+        renderIncidentList();
+      };
+      window.closeModal = function() {
+        document.getElementById("modal-root").innerHTML = "";
+        document.body.style.overflow = "";
+      };
+    }
+
+    // --- Guard Tracking ---
+    function renderGuardTracking() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `
+        <div class="dashboard-header">
+          <h1>Guard Tracking</h1>
+          <div class="timestamp">&#128337; <span id="guardTimestamp"></span></div>
+        </div>
+        <button class="btn-action shift" onclick="openGuardModal()">+ Add Guard</button>
+        <div id="guardsTable"></div>
+      `;
+      function shiftClass(shift) {
+        if (shift === "Morning") return "shift-morning";
+        if (shift === "Afternoon") return "shift-afternoon";
+        return "shift-night";
+      }
+      function renderGuardsTable() {
+        const guards = getGuards();
+        let html = `<table class="guards-table">
+          <thead><tr>
+            <th>Name</th><th>Phone</th><th>Shift</th><th>Duty</th><th>Location</th><th>Map</th><th>Actions</th>
+          </tr></thead><tbody>
+          ${guards.map((g,i)=>`
+            <tr>
+              <td>${g.name}</td>
+              <td><a href="tel:${g.phone}">${g.phone}</a></td>
+              <td>
+                <span class="shift-label ${shiftClass(g.shift)}">${g.shift||"-"}</span>
+              </td>
+              <td>
+                <span class="duty-dot ${g.duty==="on"?"on":"off"}"></span>
+                <b style="color:${g.duty==="on"?"#27ae60":"#e74c3c"}">${g.duty==="on"?"On Duty":"Off Duty"}</b>
+              </td>
+              <td>${g.location ? g.location : (g.lat && g.lng ? `${g.lat.toFixed(4)}, ${g.lng.toFixed(4)}` : "-")}</td>
+              <td>
+                <div id="map${i}" class="leaflet-container"></div>
+              </td>
+              <td>
+                <div class="action-btns">
+                  <button class="btn-action edit" onclick="openGuardModal(${i})">Edit</button>
+                  <button class="btn-action duty-${g.duty}" onclick="toggleDuty(${i})">${g.duty==="on"?"Off Duty":"On Duty"}</button>
+                  <button class="btn-action delete" onclick="deleteGuard(${i})">Delete</button>
+                </div>
+              </td>
+            </tr>
+          `).join("")}
+          </tbody></table>`;
+        document.getElementById("guardsTable").innerHTML = html;
+      }
+      function updateGuardTimestamp() {
+        document.getElementById('guardTimestamp').textContent = getNowTimestamp();
+      }
+      renderGuardsTable();
+      updateGuardTimestamp();
+      setInterval(updateGuardTimestamp, 1000);
+      window.openGuardModal = function(idx) {
+        const guards = getGuards();
+        const isEdit = typeof idx === "number";
+        const g = isEdit ? {...guards[idx]} : { name: "", phone: "", shift: "Morning", duty: "off", location: "", lat: "", lng: "" };
+        document.getElementById("modal-root").innerHTML = `
+          <div class="modal-bg" id="guardModalBg">
+            <form class="modal" id="guardModalForm">
+              <h2>${isEdit ? "Edit Guard" : "Add Guard"}</h2>
+              <div class="form-error" id="guardModalErr"></div>
+              <label>Name*</label>
+              <input name="name" value="${g.name||""}" required/>
+              <label>Phone*</label>
+              <input name="phone" value="${g.phone||""}" required/>
+              <label>Shift*</label>
+              <select name="shift" required>
+                <option value="Morning"${g.shift==="Morning"?" selected":""}>Morning</option>
+                <option value="Afternoon"${g.shift==="Afternoon"?" selected":""}>Afternoon</option>
+                <option value="Night"${g.shift==="Night"?" selected":""}>Night</option>
+              </select>
+              <label>Duty*</label>
+              <select name="duty" required>
+                <option value="on"${g.duty==="on"?" selected":""}>On Duty</option>
+                <option value="off"${g.duty==="off"?" selected":""}>Off Duty</option>
+              </select>
+              <label>Location</label>
+              <input name="location" value="${g.location||""}" placeholder="eg. HQ 1"/>
+              <label>Latitude</label>
+              <input name="lat" type="number" value="${g.lat||""}" placeholder="eg. 6.5244" step="any"/>
+              <label>Longitude</label>
+              <input name="lng" type="number" value="${g.lng||""}" placeholder="eg. 3.3792" step="any"/>
+              <div class="modal-actions">
+                <button type="button" class="cancel" onclick="closeModal()">Cancel</button>
+                <button type="submit">${isEdit?"Save":"Add"}</button>
+              </div>
+            </form>
+          </div>
+        `;
+        document.body.style.overflow = "hidden";
+        document.getElementById("guardModalForm").onsubmit = function(e) {
+          e.preventDefault();
+          const f = e.target;
+          const newGuard = {
+            name: f.name.value.trim(),
+            phone: f.phone.value.trim(),
+            shift: f.shift.value,
+            duty: f.duty.value,
+            location: f.location.value.trim(),
+            lat: f.lat.value ? parseFloat(f.lat.value) : "",
+            lng: f.lng.value ? parseFloat(f.lng.value) : ""
+          };
+          if (!newGuard.name || !newGuard.phone) {
+            document.getElementById("guardModalErr").textContent = "Name and phone required.";
+            return;
+          }
+          if (isEdit) {
+            guards[idx] = newGuard;
+          } else {
+            guards.push(newGuard);
+          }
+          saveGuards(guards);
+          closeModal();
+          renderGuardsTable();
+        };
+        document.getElementById("guardModalBg").onclick = function(e) {
+          if (e.target.id === "guardModalBg") closeModal();
+        };
+      };
+      window.toggleDuty = function(idx) {
+        const guards = getGuards();
+        guards[idx].duty = guards[idx].duty === "on" ? "off" : "on";
+        saveGuards(guards);
+        renderGuardsTable();
+      };
+      window.deleteGuard = function(idx) {
+        if (!confirm("Delete this guard?")) return;
+        const guards = getGuards();
+        guards.splice(idx,1);
+        saveGuards(guards);
+        renderGuardsTable();
+      };
+      window.closeModal = function() {
+        document.getElementById("modal-root").innerHTML = "";
+        document.body.style.overflow = "";
+      };
+    }
+
+    // --- User Management ---
+    function renderUserManagement() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `
+        <div class="dashboard-header">
+          <h1>User Management</h1>
+          <div class="timestamp">&#128337; <span id="userTimestamp"></span></div>
+        </div>
+        <button style="margin-bottom:1rem;background:#27ae60;color:#fff;font-weight:600;" onclick="openUserModal()">+ Add User</button>
+        <div id="usersList"></div>
+      `;
+      function renderUsersList() {
+        const users = getUsers();
+        let table = `<table class="users-table"><thead>
+          <tr><th>ID</th><th>Name</th><th>Address</th><th>Email</th><th>Phone</th><th>Role</th><th>Dept</th><th>Location</th><th>Actions</th></tr>
+          </thead><tbody>`;
+        users.forEach((u, idx) => {
+          table += `<tr>
+            <td>${escapeHTML(u.id)}</td>
+            <td>${escapeHTML(u.name)}</td>
+            <td>${escapeHTML(u.address)}</td>
+            <td>${escapeHTML(u.email)}</td>
+            <td>${escapeHTML(u.phone)}</td>
+            <td>${escapeHTML(u.role)}</td>
+            <td>${escapeHTML(u.department)}</td>
+            <td>${escapeHTML(u.location)}</td>
+            <td>
+              <div class="action-btns">
+                <button class="btn-action edit" onclick="editUser(${idx})">Edit</button>
+                <button class="btn-action delete" onclick="deleteUser(${idx})">Delete</button>
+              </div>
+            </td>
+          </tr>`;
+        });
+        table += `</tbody></table>`;
+        document.getElementById("usersList").innerHTML = table;
+      }
+      function updateUserTimestamp() {
+        document.getElementById('userTimestamp').textContent = getNowTimestamp();
+      }
+      renderUsersList();
+      updateUserTimestamp();
+      setInterval(updateUserTimestamp, 1000);
+      window.openUserModal = function(idx) {
+        const users = getUsers();
+        const isEdit = typeof idx === "number";
+        const u = isEdit ? {...users[idx]} : {id: String(1000+users.length+1), name:"", address:"", email:"", phone:"", role:"", department:"", location:""};
+        document.getElementById("modal-root").innerHTML = `
+          <div class="modal-bg" id="userModalBg">
+            <form class="modal" id="userModalForm">
+              <h2>${isEdit ? "Edit User" : "Add User"}</h2>
+              <div class="form-error" id="userModalErr"></div>
+              <label>ID</label>
+              <input type="text" name="id" value="${escapeHTML(u.id)}" readonly style="background:#e9edf6;font-weight:bold;" />
+              <label>Name*</label>
+              <input type="text" name="name" required maxlength="80" value="${escapeHTML(u.name)}"/>
+              <label>Address*</label>
+              <input type="text" name="address" required maxlength="120" value="${escapeHTML(u.address)}"/>
+              <label>Email*</label>
+              <input type="email" name="email" required maxlength="80" value="${escapeHTML(u.email)}"/>
+              <label>Phone*</label>
+              <input type="tel" name="phone" required maxlength="30" value="${escapeHTML(u.phone)}"/>
+              <label>Role*</label>
+              <input type="text" name="role" required maxlength="30" value="${escapeHTML(u.role)}"/>
+              <label>Department*</label>
+              <input type="text" name="department" required maxlength="30" value="${escapeHTML(u.department)}"/>
+              <label>Location*</label>
+              <input type="text" name="location" required maxlength="60" value="${escapeHTML(u.location)}"/>
+              <div class="modal-actions">
+                <button type="button" class="cancel" onclick="closeModal()">Cancel</button>
+                <button type="submit">${isEdit ? "Save" : "Add"}</button>
+              </div>
+            </form>
+          </div>
+        `;
+        document.body.style.overflow = 'hidden';
+        document.getElementById("userModalForm").onsubmit = function(e) {
+          e.preventDefault();
+          const f = e.target;
+          const userObj = {
+            id: f.id.value.trim(),
+            name: f.name.value.trim(),
+            address: f.address.value.trim(),
+            email: f.email.value.trim(),
+            phone: f.phone.value.trim(),
+            role: f.role.value.trim(),
+            department: f.department.value.trim(),
+            location: f.location.value.trim()
+          };
+          if (Object.values(userObj).some(v=>!v)) {
+            document.getElementById('userModalErr').textContent = "All fields required";
+            return;
+          }
+          if (isEdit) users[idx] = userObj;
+          else users.push(userObj);
+          saveUsers(users);
+          closeModal();
+          renderUsersList();
+        };
+        document.getElementById("userModalBg").onclick = function(e) {
+          if (e.target.id === "userModalBg") closeModal();
+        };
+      };
+      window.editUser = function(idx) { openUserModal(idx); };
+      window.deleteUser = function(idx) {
+        if (!confirm("Delete this user?")) return;
+        const users = getUsers();
+        users.splice(idx,1);
+        saveUsers(users);
+        renderUsersList();
+      };
+      window.closeModal = function() {
+        document.getElementById("modal-root").innerHTML = "";
+        document.body.style.overflow = "";
+      };
+    }
+
+    // --- System Reports ---
+    function renderReports() {
+      const main = document.getElementById('mainContent');
+      const inc = getIncidents(), users = getUsers(), logs = getLogs(), guards = getGuards();
+      main.innerHTML = `
+        <div class="dashboard-header">
+          <h1>System Reports</h1>
+          <div class="timestamp">&#128337; <span id="reportTimestamp"></span></div>
+        </div>
+        <div id="reportDownloadBtns"></div>
+        <div id="reportTables"></div>
+      `;
+      document.getElementById("reportDownloadBtns").innerHTML = `
+        <button class="report-download-btn" onclick='downloadCsv("incidents.csv",arrayToCsv(${JSON.stringify(inc)},[
+          {label:"Title",key:"title"},{label:"Description",key:"description"},{label:"Location",key:"location"},
+          {label:"Reporter",key:"reporter"},{label:"Date",key:"date"},{label:"Time",key:"time"}]))'>Download Incidents (.csv)</button>
+        <button class="report-download-btn" onclick='downloadCsv("users.csv",arrayToCsv(${JSON.stringify(users)},[
+          {label:"ID",key:"id"},{label:"Name",key:"name"},{label:"Address",key:"address"},{label:"Email",key:"email"},
+          {label:"Phone",key:"phone"},{label:"Role",key:"role"},{label:"Dept",key:"department"},{label:"Location",key:"location"}]))'>Download Users (.csv)</button>
+        <button class="report-download-btn" onclick='downloadCsv("logs.csv",arrayToCsv(${JSON.stringify(logs)},[
+          {label:"Action",key:"action"},{label:"Timestamp",key:"timestamp"}]))'>Download Logs (.csv)</button>
+        <button class="report-download-btn" onclick='downloadCsv("guards.csv",arrayToCsv(${JSON.stringify(guards)},[
+          {label:"Name",key:"name"},{label:"Phone",key:"phone"},{label:"Location",key:"location"},{label:"Shift",key:"shift"},{label:"Duty",key:"duty"},{label:"Latitude",key:"lat"},{label:"Longitude",key:"lng"}]))'>Download Guards (.csv)</button>
+      `;
+      document.getElementById("reportTables").innerHTML = `
+        <h4 style="margin-top:1.2rem;">Incidents Table</h4>
+        <table class="incidents-table">
+          <thead><tr><th>Title</th><th>Description</th><th>Location</th><th>Reporter</th><th>Date</th><th>Time</th></tr></thead>
+          <tbody>${inc.map(i=>`<tr><td>${i.title}</td><td>${i.description}</td><td>${i.location}</td><td>${i.reporter}</td><td>${i.date}</td><td>${i.time}</td></tr>`).join("")}</tbody>
+        </table>
+        <h4 style="margin-top:1.2rem;">Users Table</h4>
+        <table class="users-table">
+          <thead><tr><th>ID</th><th>Name</th><th>Address</th><th>Email</th><th>Phone</th><th>Role</th><th>Dept</th><th>Location</th></tr></thead>
+          <tbody>${users.map(u=>`<tr><td>${u.id}</td><td>${u.name}</td><td>${u.address}</td><td>${u.email}</td><td>${u.phone}</td><td>${u.role}</td><td>${u.department}</td><td>${u.location}</td></tr>`).join("")}</tbody>
+        </table>
+        <h4 style="margin-top:1.2rem;">Guards Table</h4>
+        <table class="guards-table">
+          <thead><tr><th>Name</th><th>Phone</th><th>Location</th><th>Shift</th><th>Duty</th><th>Latitude</th><th>Longitude</th></tr></thead>
+          <tbody>${guards.map(g=>`<tr><td>${g.name}</td><td>${g.phone}</td><td>${g.location}</td><td>${g.shift}</td><td>${g.duty}</td><td>${g.lat}</td><td>${g.lng}</td></tr>`).join("")}</tbody>
+        </table>
+        <h4 style="margin-top:1.2rem;">Logs</h4>
+        <table class="logs-table">
+          <thead><tr><th>Action</th><th>Timestamp</th></tr></thead>
+          <tbody>${logs.map(l=>`<tr><td>${l.action}</td><td>${l.timestamp}</td></tr>`).join("")}</tbody>
+        </table>
+      `;
+      function updateReportTimestamp() {
+        document.getElementById('reportTimestamp').textContent = getNowTimestamp();
+      }
+      updateReportTimestamp();
+      setInterval(updateReportTimestamp, 1000);
+    }
+    // --- Initial Load ---
+    renderDashboard();
   </script>
 </body>
 </html>
