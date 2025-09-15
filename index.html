@@ -95,13 +95,51 @@
       .dashboard-metrics { flex-direction: column; gap: 1rem; }
       .guards-table th, .guards-table td, .users-table th, .users-table td, .incidents-table th, .incidents-table td, .logs-table th, .logs-table td { padding: 7px 3px; font-size: 0.97rem;}
     }
+    
+    /* Notification styles */
+    #notification-area {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 9999;
+      max-width: 340px;
+      pointer-events: none;
+    }
+    .notification {
+      background: #274472;
+      color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px #15223855;
+      padding: 1rem 1.2rem;
+      margin-bottom: 0.7rem;
+      font-size: 1.08rem;
+      font-weight: 500;
+      opacity: 0;
+      transform: translateY(30px);
+      animation: notif-in 0.5s forwards, notif-out 0.5s 3.5s forwards;
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+    }
+    .notification.success { background: #27ae60; }
+    .notification.error { background: #e74c3c; }
+    .notification.info { background: #274472; }
+    @keyframes notif-in {
+      from { opacity: 0; transform: translateY(30px);}
+      to { opacity: 1; transform: translateY(0);}
+    }
+    @keyframes notif-out {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <nav class="sidebar">
-       <img src="https://drive.google.com/file/d/1dgeo98YmqHuTdfgby7reJ3fOvIBLygrm/view?usp=drive_link"
-           alt="Sagittarius Security" class="logo-img" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/3/3f/Logo_black_on_white_circle.png'">
+       <img src="https://drive.google.com/file/d/1dgeo98YmqHuTdfgby7reJ3fOvIBLygrm/view?usp=drive_link"  alt="Logo" class="logo-img" style="width:100%;height:auto;margin-bottom:1.5rem;"/>
+          
       <h2 class="sidebar-title">Sagittarius Security</h2>
       <ul class="sidebar-links">
         <li><span class="sidebar-link active" data-section="dashboard">Dashboard</span></li>
@@ -114,7 +152,23 @@
     <main class="main-content" id="mainContent"></main>
     <div id="modal-root"></div>
   </div>
+   <div id="notification-area"></div>
+  </div>
   <script>
+
+     // === Notification System ===
+    function notify(msg, type="info") {
+      const area = document.getElementById('notification-area');
+      const n = document.createElement('div');
+      n.className = `notification ${type}`;
+      n.innerHTML = `<span>${msg}</span>`;
+      area.appendChild(n);
+      setTimeout(() => {
+        n.style.opacity = 0;
+        setTimeout(() => area.removeChild(n), 600);
+      }, 4000);
+    }
+
     // --- Data Layer ---
     function getUsers() { return JSON.parse(localStorage.getItem("sagittarius-users") || "[]"); }
     function getGuards() { return JSON.parse(localStorage.getItem("sagittarius-guards") || "[]"); }
@@ -778,3 +832,4 @@
   </script>
 </body>
 </html>
+
