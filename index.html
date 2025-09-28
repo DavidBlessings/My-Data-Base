@@ -1,837 +1,2208 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Sagittarius Security Management System</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body { margin: 0; font-family: system-ui,sans-serif; background: #f6f8fa; }
-    .container { display: flex; min-height: 100vh; }
-    .sidebar {
-      width: 240px; background: blue; color: #fff; display: flex; flex-direction: column;
-      padding: 2rem 1rem; min-height: 100vh;
-    }
-    .sidebar-title { font-size: 18; font-weight: bold; margin-bottom: 2.5rem; text-align: center; }
-    .sidebar-links { list-style: none; padding: 0; margin: 0; }
-    .sidebar-link {
-      display: block; color: #c8d1e1; padding: 0.9rem 1.2rem; border-radius: 0.4rem;
-      text-decoration: none; margin-bottom: 0.7rem; font-size: 1.06rem;
-      transition: background 0.2s, color 0.2s; cursor: pointer;
-    }
-    .sidebar-link.active, .sidebar-link:hover { background: brown; color: #fff; }
-    .main-content { flex: 1; padding: 2rem; background: #f6f8fa; overflow-y: auto; position: relative; }
-    .dashboard-header {
-      display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1.5rem;
-    }
-    .dashboard-header h1 { margin: 0; }
-    .timestamp {
-      color: blue; font-size: 16; background: #e9edf6;
-      padding: 0.35rem 0.9rem; border-radius: 1.2rem; box-shadow: 0 2px 8px rgba(30,40,55,0.05);
-      font-weight: bold; display: inline-flex; align-items: center; gap: 0.4rem;
-      margin-bottom: 1rem;
-      font-style: italic;
-    }
-    .dashboard-metrics {
-      display: flex; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap;
-    }
-    .metric-card {
-      box-shadow: 0 2px 8px rgba(30,40,55,0.08); border-radius: 0.8rem; padding: 1.1rem 1.6rem; flex: 1 1 160px;
-      min-width: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff;
-    }
-    .metric-card.users { background: linear-gradient(135deg, #2a5298 60%, #1e3c72 100%); }
-    .metric-card.guards { background: linear-gradient(135deg, #27ae60 60%, #219150 100%); }
-    .metric-card.locations { background: linear-gradient(135deg, #f39c12 60%, #e67e22 100%); }
-    .metric-card.incidents { background: linear-gradient(135deg, #e74c3c 60%, #c0392b 100%); }
-    .metric-value { font-size: 1.6rem; font-weight: bold; margin-bottom: 0.2rem; }
-    .metric-label { font-size: 0.99rem; color: rgba(255,255,255,0.9); }
-    .chart-section { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #e3e7ef; margin-bottom: 1.8rem; padding: 1.2rem 1.2rem 1.5rem 1.2rem;}
-    .chart-title { color: #274472; font-weight: 600; margin-bottom: 0.5rem; }
-    .users-table, .incidents-table, .logs-table, .guards-table {
-      width: 100%; border-collapse: collapse; margin-top: 1.2rem; background: #fff; box-shadow: 0 2px 8px #e3e7ef;
-      border-radius: 9px; overflow: hidden; font-size: 1.01rem;
-    }
-    .users-table thead, .incidents-table thead, .logs-table thead, .guards-table thead { background: #f6f8fa; color: #274472; }
-    .users-table th, .users-table td, .incidents-table th, .incidents-table td, .logs-table th, .logs-table td, .guards-table th, .guards-table td {
-      padding: 8px 10px; border-bottom: 1px solid #e3e7ef; text-align: left;
-    }
-    .users-table th, .incidents-table th, .logs-table th, .guards-table th { font-weight: 600; }
-    .users-table tr:last-child td, .incidents-table tr:last-child td, .logs-table tr:last-child td, .guards-table tr:last-child td { border-bottom: none; }
-    .users-table tbody tr:hover, .incidents-table tbody tr:hover, .logs-table tbody tr:hover, .guards-table tbody tr:hover { background: #f9f2f2; }
-    .users-table .action-btns, .incidents-table .action-btns, .guards-table .action-btns { display: flex; gap: 7px; }
-    .users-table .btn-action, .incidents-table .btn-action, .guards-table .btn-action {
-      border: none; background: #e9edf6; color: #274472; padding: 4px 11px; border-radius: 4px;
-      cursor: pointer; font-size: 0.98rem; font-weight: 600; transition: background 0.16s, color 0.16s;
-    }
-    .users-table .btn-action.edit, .incidents-table .btn-action.edit, .guards-table .btn-action.edit { background: #f39c12; color: #fff;}
-    .users-table .btn-action.delete, .incidents-table .btn-action.delete, .guards-table .btn-action.delete { background: #e74c3c; color: #fff;}
-    .guards-table .btn-action.shift { background: #274472; color: #fff;}
-    .guards-table .btn-action.duty-on { background: #27ae60; color: #fff;}
-    .guards-table .btn-action.duty-off { background: #e74c3c; color: #fff;}
-    .users-table .btn-action.call, .guards-table .btn-action.call { background: #27ae60; color: #fff;}
-    .map-marker { color: #e74c3c; font-size: 1.2rem; margin-right: 4px; vertical-align: middle;}
-    .report-download-btn { background: #274472; color: #fff; border: none; border-radius: 5px; padding: 7px 16px; font-size: 1.02rem; margin-bottom: 1.2rem; margin-right: 10px; cursor: pointer; font-weight: 600; transition: background 0.16s;}
-    .report-download-btn:hover { background: #2a5298;}
-    .modal-bg { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(30,40,55,0.18); z-index: 999; display: flex; align-items: center; justify-content: center; }
-    .modal { background: #fff; border-radius: 1rem; box-shadow: 0 8px 36px rgba(30,40,55,0.14); padding: 2rem 2rem 1.5rem 2rem; max-width: 400px; width: 98vw; position: relative; max-height: 90vh; overflow-y: auto; }
-    .modal label { font-weight: 500; display: block; margin: 1rem 0 0.12rem 0; color: #274472;}
-    .modal input, .modal textarea, .modal select { width: 100%; padding: 7px 8px; border-radius: 5px; border: 1px solid #c8d1e1; font-size: 1.04rem; margin-bottom: 0.3rem; box-sizing: border-box; background: #f6f8fa; resize: vertical;}
-    .modal .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;}
-    .modal .modal-actions button { padding: 8px 20px; border-radius: 5px; border: none; font-size: 1.05rem; background: #274472; color: #fff; cursor: pointer;}
-    .modal .modal-actions button.cancel { background: #bbb; color: #274472;}
-    .modal .form-error { color: #e74c3c; font-size: 0.98rem; margin-bottom: 0.4rem; margin-top: 0.2rem;}
-    .leaflet-container { height: 120px; width: 100%; margin: 0.4rem 0 0.3rem 0; border-radius: 8px; }
-    .duty-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-    .duty-dot.on { background: #27ae60; }
-    .duty-dot.off { background: #e74c3c; }
-    .shift-label { border-radius: 5px; padding: 2px 7px; color: #fff; font-weight: 600; font-size: 0.99em; }
-    .shift-morning { background: #2a5298; }
-    .shift-afternoon { background: #f39c12; }
-    .shift-night { background: #22223b; }
-    @media (max-width: 1000px) {
-      .main-content { padding: 0.5rem;}
-      .dashboard-metrics { flex-direction: column; gap: 1rem; }
-      .guards-table th, .guards-table td, .users-table th, .users-table td, .incidents-table th, .incidents-table td, .logs-table th, .logs-table td { padding: 7px 3px; font-size: 0.97rem;}
-    }
-    
-    /* Notification styles */
-    #notification-area {
-      position: fixed;
-      top: 24px;
-      right: 24px;
-      z-index: 9999;
-      max-width: 340px;
-      pointer-events: none;
-    }
-    .notification {
-      background: #274472;
-      color: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px #15223855;
-      padding: 1rem 1.2rem;
-      margin-bottom: 0.7rem;
-      font-size: 1.08rem;
-      font-weight: 500;
-      opacity: 0;
-      transform: translateY(30px);
-      animation: notif-in 0.5s forwards, notif-out 0.5s 3.5s forwards;
-      pointer-events: auto;
-      display: flex;
-      align-items: center;
-      gap: 0.7rem;
-    }
-    .notification.success { background: #27ae60; }
-    .notification.error { background: #e74c3c; }
-    .notification.info { background: #274472; }
-    @keyframes notif-in {
-      from { opacity: 0; transform: translateY(30px);}
-      to { opacity: 1; transform: translateY(0);}
-    }
-    @keyframes notif-out {
-      from { opacity: 1; }
-      to { opacity: 0; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sagittarius Security System</title>
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' ry='20' fill='%230A2351'/><path d='M50 8l-30 15v30l30 15 30-15v-30l-30-15z' fill='white'/></svg>" type="image/svg+xml">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN for the dashboard trend -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <style>
+        /* Custom colors for Tailwind */
+        :root {
+            --sagittarius-blue: #0A2351;
+            --sagittarius-gold: #FFD700;
+            --sagittarius-white: #F7F7F7;
+        }
+
+        .dark {
+            --sagittarius-blue: #1A202C;
+            --sagittarius-gold: #FFD700;
+            --sagittarius-white: #2D3748;
+            --text-color: #F7FAFC;
+        }
+
+        /* Custom scrollbar for a clean look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--sagittarius-white);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--sagittarius-blue);
+            border-radius: 4px;
+        }
+        .incident-table th, .incident-table td, .payroll-table th, .payroll-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .incident-table th, .payroll-table th {
+            background-color: var(--sagittarius-blue);
+            color: var(--sagittarius-white);
+            font-weight: 60;
+        }
+        .incident-table tr:hover, .payroll-table tr:hover {
+            background-color: var(--sagittarius-white);
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'sagittarius-blue': 'var(--sagittarius-blue)',
+                        'sagittarius-gold': 'var(--sagittarius-gold)',
+                        'sagittarius-white': 'var(--sagittarius-white)',
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body>
-  <div class="container">
-    <nav class="sidebar">
-       <img src="Bold Emblem Logo for Sagittarius Security (1).png"  alt="Logo" class="logo-img" style="width:50%;height:auto;margin-bottom:1.5rem;align-left"/>
-          
-      <h2 class="sidebar-title">Sagittarius Security</h2>
-      <ul class="sidebar-links">
-        <li><span class="sidebar-link active" data-section="dashboard">Dashboard</span></li>
-        <li><span class="sidebar-link" data-section="incidents">Incident Reporting</span></li>
-        <li><span class="sidebar-link" data-section="guards">Guard Tracking</span></li>
-        <li><span class="sidebar-link" data-section="users">User Management</span></li>
-        <li><span class="sidebar-link" data-section="reports">System Reports</span></li>
-      </ul>
-    </nav>
-    <main class="main-content" id="mainContent"></main>
-    <div id="modal-root"></div>
-  </div>
-   <div id="notification-area"></div>
-  </div>
-  <script>
+<body class="bg-sagittarius-white text-sagittarius-blue font-sans antialiased">
 
-     // === Notification System ===
-    function notify(msg, type="info") {
-      const area = document.getElementById('notification-area');
-      const n = document.createElement('div');
-      n.className = `notification ${type}`;
-      n.innerHTML = `<span>${msg}</span>`;
-      area.appendChild(n);
-      setTimeout(() => {
-        n.style.opacity = 0;
-        setTimeout(() => area.removeChild(n), 600);
-      }, 4000);
-    }
+    <!-- Main Application Container -->
+    <div id="appContainer" class="flex flex-col md:flex-row h-screen hidden">
 
-    // --- Data Layer ---
-    function getUsers() { return JSON.parse(localStorage.getItem("sagittarius-users") || "[]"); }
-    function getGuards() { return JSON.parse(localStorage.getItem("sagittarius-guards") || "[]"); }
-    function getIncidents() { return JSON.parse(localStorage.getItem("sagittarius-incidents") || "[]"); }
-    function getLogs() { return JSON.parse(localStorage.getItem("sagittarius-logs") || "[]"); }
-    function saveUsers(users) { localStorage.setItem("sagittarius-users", JSON.stringify(users)); }
-    function saveGuards(guards) { localStorage.setItem("sagittarius-guards", JSON.stringify(guards)); }
-    function saveIncidents(incidents) { localStorage.setItem("sagittarius-incidents", JSON.stringify(incidents)); }
-    function saveLogs(logs) { localStorage.setItem("sagittarius-logs", JSON.stringify(logs)); }
-    function addLog(action) {
-      const logs = getLogs();
-      logs.unshift({action, timestamp: getNowTimestamp()});
-      saveLogs(logs);
-    }
-    function getNowTimestamp() {
-      const now = new Date();
-      const dd = String(now.getDate()).padStart(2, '0');
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const yyyy = now.getFullYear();
-      const hh = String(now.getHours()).padStart(2, '0');
-      const min = String(now.getMinutes()).padStart(2, '0');
-      const ss = String(now.getSeconds()).padStart(2, '0');
-      return `${dd}/${mm}/${yyyy} ${hh}:${min}:${ss}`;
-    }
-    function escapeHTML(str) {
-      return String(str || '').replace(/[&<>"']/g, function(m) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
-      });
-    }
-    function arrayToCsv(data, columns) {
-      const esc = v => `"${String(v === undefined ? "" : v).replace(/"/g, '""')}"`;
-      let header = columns.map(c => esc(c.label)).join(',');
-      let rows = data.map(row => columns.map(c => esc(row[c.key])).join(','));
-      return [header, ...rows].join('\r\n');
-    }
-    function downloadCsv(filename, csv) {
-      const blob = new Blob([csv], {type: 'text/csv'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 100);
-    }
-    // --- Demo Data Initialization ---
-    if (!localStorage.getItem("sagittarius-users")) {
-      saveUsers([
-        {id:"1001", name:"Admin", address:"HQ Road", email:"admin@demo.com", phone:"1234567890", role:"Administrator", department:"IT", location:"HQ"}
-      ]);
-    }
-    if (!localStorage.getItem("sagittarius-guards")) {
-      saveGuards([
-        { name: "John Doe", phone: "08031234567", shift: "Morning", duty: "on", location: "HQ 1", lat: 6.5244, lng: 3.3792 },
-        { name: "Jane Smith", phone: "08035554444", shift: "Night", duty: "off", location: "HQ 2", lat: 6.5987, lng: 3.3991 },
-        { name: "Mike Kelvin", phone: "08031112222", shift: "Afternoon", duty: "on", location: "HQ 1", lat: 6.4551, lng: 3.3841 }
-      ]);
-    }
-    if (!localStorage.getItem("sagittarius-incidents")) {
-      saveIncidents([
-        {title:"Gate Breach", description:"Unauthorized entry detected", location:"Gate 1", reporter:"Jane Smith", date:"2025-09-14", time:"15:30"}
-      ]);
-    }
-    if (!localStorage.getItem("sagittarius-logs")) {
-      saveLogs([{action:"System initialized",timestamp:getNowTimestamp()}]);
-    }
-    // --- Utility ---
-    function getUniqueLocations() {
-      const userLocs = getUsers().map(u => (u.location || '').trim()).filter(Boolean);
-      const guardLocs = getGuards().map(g => {
-        if(g.location && g.location.trim()) return g.location.trim();
-        if(g.lat && g.lng) return `${g.lat.toFixed(4)},${g.lng.toFixed(4)}`;
-        return '';
-      }).filter(Boolean);
-      return Array.from(new Set([...userLocs, ...guardLocs]));
-    }
-    // --- Navigation ---
-    function showSection(section) {
-      const main = document.getElementById('mainContent');
-      while(main.firstChild) main.removeChild(main.firstChild);
-      document.getElementById('modal-root').innerHTML = '';
-      if(section==='dashboard') renderDashboard();
-      if(section==='incidents') renderIncidentReporting();
-      if(section==='guards') renderGuardTracking();
-      if(section==='users') renderUserManagement();
-      if(section==='reports') renderReports();
-    }
-    document.querySelectorAll('.sidebar-link').forEach(link => {
-      link.addEventListener('click', function() {
-        document.querySelectorAll('.sidebar-link').forEach(l=>l.classList.remove('active'));
-        this.classList.add('active');
-        showSection(this.getAttribute('data-section'));
-      });
-    });
-
-    // --- Dashboard with Trend and Bar Chart ---
-    function renderDashboard() {
-      const main = document.getElementById('mainContent');
-      main.innerHTML = `
-        <div class="dashboard-header">
-          <h1>Dashboard</h1>
-          <div class="timestamp">&#128337; <span id="dashboardTimestamp"></span></div>
-        </div>
-        <div class="dashboard-metrics" id="dashboardMetrics"></div>
-        <div class="chart-section">
-          <div class="chart-title">Incident Reports Trend by Month</div>
-          <canvas id="incidentTrendChart" height="80"></canvas>
-        </div>
-        <div class="chart-section">
-          <div class="chart-title">Number of Unique Locations by Month (from Incidents)</div>
-          <canvas id="locationBarChart" height="90"></canvas>
-        </div>
-      `;
-      function renderMetrics() {
-        const users = getUsers(), guards = getGuards(), incidents = getIncidents(), locations = getUniqueLocations();
-        document.getElementById("dashboardMetrics").innerHTML = `
-          <div class="metric-card users">
-            <div class="metric-value">${users.length}</div>
-            <div class="metric-label">Total Users</div>
-          </div>
-          <div class="metric-card guards">
-            <div class="metric-value">${guards.length}</div>
-            <div class="metric-label">Total Guards</div>
-          </div>
-          <div class="metric-card locations">
-            <div class="metric-value">${locations.length}</div>
-            <div class="metric-label">Total Locations</div>
-          </div>
-          <div class="metric-card incidents">
-            <div class="metric-value">${incidents.length}</div>
-            <div class="metric-label">Total Incidents</div>
-          </div>
-        `;
-      }
-      function updateDashboardTimestamp() {
-        document.getElementById('dashboardTimestamp').textContent = getNowTimestamp();
-      }
-      renderMetrics();
-      updateDashboardTimestamp();
-      setInterval(updateDashboardTimestamp, 1000);
-      renderDashboardCharts();
-    }
-    function renderDashboardCharts() {
-      // --- Incident Trend Line Chart ---
-      const incidents = getIncidents();
-      // Group incidents by YYYY-MM
-      const monthlyCount = {};
-      incidents.forEach(i => {
-        const key = (i.date || "").slice(0,7) || "Unknown";
-        monthlyCount[key] = (monthlyCount[key]||0) + 1;
-      });
-      // Sort months chronologically (take the last 12 months)
-      const months = Object.keys(monthlyCount).filter(m=>m!=="Unknown").sort();
-      const displayMonths = months.slice(-12);
-      const incidentCounts = displayMonths.map(m=>monthlyCount[m]);
-      if(displayMonths.length === 0) {
-        const now = new Date();
-        const m = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-        displayMonths.push(m);
-        incidentCounts.push(0);
-      }
-      const monthLabels = displayMonths.map(m=> {
-        const [y,mo] = m.split('-');
-        return `${mo}/${y}`;
-      });
-      const ctx1 = document.getElementById('incidentTrendChart').getContext('2d');
-      if(window._incidentTrendChart) window._incidentTrendChart.destroy();
-      window._incidentTrendChart = new Chart(ctx1, {
-        type: 'line',
-        data: {
-          labels: monthLabels,
-          datasets: [{
-            label: 'Incidents',
-            data: incidentCounts,
-            fill: true,
-            borderColor: '#e74c3c',
-            backgroundColor: 'rgba(231,76,60,0.08)',
-            pointBackgroundColor: '#e74c3c'
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: {display: false},
-            title: {display: false}
-          },
-          scales: {
-            y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
-          }
-        }
-      });
-
-      // --- Locations by Month Bar Chart (number of unique locations each month from incidents) ---
-      const locMonthMap = {};
-      incidents.forEach(i => {
-        const month = (i.date || "").slice(0,7) || "Unknown";
-        if(!locMonthMap[month]) locMonthMap[month] = new Set();
-        if(i.location && i.location.trim()) locMonthMap[month].add(i.location.trim());
-      });
-      const locMonths = Object.keys(locMonthMap).filter(m=>m!=="Unknown").sort().slice(-12);
-      const locMonthCounts = locMonths.map(m=>locMonthMap[m].size);
-      const locMonthLabels = locMonths.map(m=> {
-        const [y,mo] = m.split('-');
-        return `${mo}/${y}`;
-      });
-      const ctx2 = document.getElementById('locationBarChart').getContext('2d');
-      if(window._locationBarChart) window._locationBarChart.destroy();
-      window._locationBarChart = new Chart(ctx2, {
-        type: 'bar',
-        data: {
-          labels: locMonthLabels.length ? locMonthLabels : ['-'],
-          datasets: [{
-            label: 'Unique Locations',
-            data: locMonthCounts.length ? locMonthCounts : [0],
-            backgroundColor: '#2a5298'
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: {display: false},
-            title: {display: false}
-          },
-          scales: {
-            y: { beginAtZero: true, stepSize: 1, precision: 0 }
-          }
-        }
-      });
-    }
-
-    // --- Incident Reporting ---
-    function renderIncidentReporting() {
-      const main = document.getElementById('mainContent');
-      main.innerHTML = `
-        <div class="dashboard-header">
-          <h1>Incident Reporting</h1>
-          <div class="timestamp">&#128337; <span id="incidentTimestamp"></span></div>
-        </div>
-        <button style="margin-bottom:1rem;background:#27ae60;color:#fff;font-weight:600;" onclick="openIncidentModal()">+ Report Incident</button>
-        <div id="incidentReportsList"></div>
-      `;
-      function renderIncidentList() {
-        const incidents = getIncidents();
-        const listDiv = document.getElementById('incidentReportsList');
-        if (!listDiv) return;
-        if (incidents.length === 0) {
-          listDiv.innerHTML = "<p style='color:#888;'>No incidents reported yet.</p>";
-          return;
-        }
-        let table = `<table class="incidents-table"><thead>
-          <tr><th>Title</th><th>Description</th><th>Location</th><th>Reporter</th><th>Date</th><th>Time</th><th>Actions</th></tr>
-          </thead><tbody>`;
-        incidents.forEach((r, idx) => {
-          table += `<tr>
-            <td>${escapeHTML(r.title)}</td>
-            <td>${escapeHTML(r.description)}</td>
-            <td>${escapeHTML(r.location)}</td>
-            <td>${escapeHTML(r.reporter)}</td>
-            <td>${escapeHTML(r.date)}</td>
-            <td>${escapeHTML(r.time)}</td>
-            <td>
-              <div class="action-btns">
-                <button class="btn-action edit" onclick="editIncident(${idx})">Edit</button>
-                <button class="btn-action delete" onclick="deleteIncident(${idx})">Delete</button>
-              </div>
-            </td>
-          </tr>`;
-        });
-        table += `</tbody></table>`;
-        listDiv.innerHTML = table;
-      }
-      function updateIncidentTimestamp() {
-        document.getElementById('incidentTimestamp').textContent = getNowTimestamp();
-      }
-      renderIncidentList();
-      updateIncidentTimestamp();
-      setInterval(updateIncidentTimestamp, 1000);
-      window.openIncidentModal = function(idx) {
-        const incidents = getIncidents();
-        const isEdit = typeof idx === "number";
-        const i = isEdit ? {...incidents[idx]} : {title:"",description:"",location:"",reporter:"",date:"",time:""};
-        document.getElementById("modal-root").innerHTML = `
-          <div class="modal-bg" id="incidentModalBg">
-            <form class="modal" id="incidentModalForm">
-              <h2>${isEdit ? "Edit Incident" : "Report Incident"}</h2>
-              <div class="form-error" id="incidentModalErr"></div>
-              <label>Title*</label>
-              <input name="title" value="${escapeHTML(i.title)}" required/>
-              <label>Description*</label>
-              <textarea name="description" required>${escapeHTML(i.description)}</textarea>
-              <label>Location*</label>
-              <input name="location" value="${escapeHTML(i.location)}" required/>
-              <label>Reporter*</label>
-              <input name="reporter" value="${escapeHTML(i.reporter)}" required/>
-              <label>Date*</label>
-              <input type="date" name="date" value="${escapeHTML(i.date)}" required/>
-              <label>Time*</label>
-              <input type="time" name="time" value="${escapeHTML(i.time)}" required/>
-              <div class="modal-actions">
-                <button type="button" class="cancel" onclick="closeModal()">Cancel</button>
-                <button type="submit">${isEdit?"Save":"Submit"}</button>
-              </div>
-            </form>
-          </div>
-        `;
-        document.body.style.overflow = 'hidden';
-        document.getElementById("incidentModalForm").onsubmit = function(e) {
-          e.preventDefault();
-          const f = e.target;
-          const incObj = {
-            title: f.title.value.trim(),
-            description: f.description.value.trim(),
-            location: f.location.value.trim(),
-            reporter: f.reporter.value.trim(),
-            date: f.date.value,
-            time: f.time.value
-          };
-          if (Object.values(incObj).some(v=>!v)) {
-            document.getElementById('incidentModalErr').textContent = "All fields required";
-            return;
-          }
-          if (isEdit) incidents[idx] = incObj;
-          else incidents.unshift(incObj);
-          saveIncidents(incidents);
-          closeModal();
-          renderIncidentList();
-        };
-        document.getElementById("incidentModalBg").onclick = function(e) {
-          if (e.target.id === "incidentModalBg") closeModal();
-        };
-      };
-      window.editIncident = function(idx) { openIncidentModal(idx); };
-      window.deleteIncident = function(idx) {
-        if (!confirm("Delete this incident?")) return;
-        const incidents = getIncidents();
-        incidents.splice(idx,1);
-        saveIncidents(incidents);
-        renderIncidentList();
-      };
-      window.closeModal = function() {
-        document.getElementById("modal-root").innerHTML = "";
-        document.body.style.overflow = "";
-      };
-    }
-
-    // --- Guard Tracking ---
-    function renderGuardTracking() {
-      const main = document.getElementById('mainContent');
-      main.innerHTML = `
-        <div class="dashboard-header">
-          <h1>Guard Tracking</h1>
-          <div class="timestamp">&#128337; <span id="guardTimestamp"></span></div>
-        </div>
-        <button class="btn-action shift" onclick="openGuardModal()">+ Add Guard</button>
-        <div id="guardsTable"></div>
-      `;
-      function shiftClass(shift) {
-        if (shift === "Morning") return "shift-morning";
-        if (shift === "Afternoon") return "shift-afternoon";
-        return "shift-night";
-      }
-      function renderGuardsTable() {
-        const guards = getGuards();
-        let html = `<table class="guards-table">
-          <thead><tr>
-            <th>Name</th><th>Phone</th><th>Shift</th><th>Duty</th><th>Location</th><th>Map</th><th>Actions</th>
-          </tr></thead><tbody>
-          ${guards.map((g,i)=>`
-            <tr>
-              <td>${g.name}</td>
-              <td><a href="tel:${g.phone}">${g.phone}</a></td>
-              <td>
-                <span class="shift-label ${shiftClass(g.shift)}">${g.shift||"-"}</span>
-              </td>
-              <td>
-                <span class="duty-dot ${g.duty==="on"?"on":"off"}"></span>
-                <b style="color:${g.duty==="on"?"#27ae60":"#e74c3c"}">${g.duty==="on"?"On Duty":"Off Duty"}</b>
-              </td>
-              <td>${g.location ? g.location : (g.lat && g.lng ? `${g.lat.toFixed(4)}, ${g.lng.toFixed(4)}` : "-")}</td>
-              <td>
-                <div id="map${i}" class="leaflet-container"></div>
-              </td>
-              <td>
-                <div class="action-btns">
-                  <button class="btn-action edit" onclick="openGuardModal(${i})">Edit</button>
-                  <button class="btn-action duty-${g.duty}" onclick="toggleDuty(${i})">${g.duty==="on"?"Off Duty":"On Duty"}</button>
-                  <button class="btn-action delete" onclick="deleteGuard(${i})">Delete</button>
+        <!-- Sidebar - Blue with Gold Accent -->
+        <aside id="sidebar" class="bg-sagittarius-blue text-sagittarius-white w-full md:w-64 fixed md:static top-0 left-0 h-screen z-50 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col">
+            <div class="p-6">
+                <!-- Logo and Brand -->
+                <div class="flex items-center space-x-2 mb-8">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 38C10.0589 38 2 29.9411 2 20C2 10.0589 10.0589 2 20 2C29.9411 2 38 10.0589 38 20C38 29.9411 29.9411 38 20 38Z" fill="var(--sagittarius-white)" stroke="var(--sagittarius-gold)" stroke-width="2"/>
+                        <path d="M20 2V20M20 20V38M20 20H38M20 20H2" stroke="var(--sagittarius-gold)" stroke-width="2"/>
+                        <path d="M12 28L20 20L28 12M12 12L20 20L28 28" stroke="var(--sagittarius-gold)" stroke-width="2"/>
+                    </svg>
+                    <h1 id="companyNameDisplay" class="text-xl font-bold tracking-tight text-sagittarius-white">Sagittarius Security</h1>
                 </div>
-              </td>
-            </tr>
-          `).join("")}
-          </tbody></table>`;
-        document.getElementById("guardsTable").innerHTML = html;
-      }
-      function updateGuardTimestamp() {
-        document.getElementById('guardTimestamp').textContent = getNowTimestamp();
-      }
-      renderGuardsTable();
-      updateGuardTimestamp();
-      setInterval(updateGuardTimestamp, 1000);
-      window.openGuardModal = function(idx) {
-        const guards = getGuards();
-        const isEdit = typeof idx === "number";
-        const g = isEdit ? {...guards[idx]} : { name: "", phone: "", shift: "Morning", duty: "off", location: "", lat: "", lng: "" };
-        document.getElementById("modal-root").innerHTML = `
-          <div class="modal-bg" id="guardModalBg">
-            <form class="modal" id="guardModalForm">
-              <h2>${isEdit ? "Edit Guard" : "Add Guard"}</h2>
-              <div class="form-error" id="guardModalErr"></div>
-              <label>Name*</label>
-              <input name="name" value="${g.name||""}" required/>
-              <label>Phone*</label>
-              <input name="phone" value="${g.phone||""}" required/>
-              <label>Shift*</label>
-              <select name="shift" required>
-                <option value="Morning"${g.shift==="Morning"?" selected":""}>Morning</option>
-                <option value="Afternoon"${g.shift==="Afternoon"?" selected":""}>Afternoon</option>
-                <option value="Night"${g.shift==="Night"?" selected":""}>Night</option>
-              </select>
-              <label>Duty*</label>
-              <select name="duty" required>
-                <option value="on"${g.duty==="on"?" selected":""}>On Duty</option>
-                <option value="off"${g.duty==="off"?" selected":""}>Off Duty</option>
-              </select>
-              <label>Location</label>
-              <input name="location" value="${g.location||""}" placeholder="eg. HQ 1"/>
-              <label>Latitude</label>
-              <input name="lat" type="number" value="${g.lat||""}" placeholder="eg. 6.5244" step="any"/>
-              <label>Longitude</label>
-              <input name="lng" type="number" value="${g.lng||""}" placeholder="eg. 3.3792" step="any"/>
-              <div class="modal-actions">
-                <button type="button" class="cancel" onclick="closeModal()">Cancel</button>
-                <button type="submit">${isEdit?"Save":"Add"}</button>
-              </div>
-            </form>
-          </div>
-        `;
-        document.body.style.overflow = "hidden";
-        document.getElementById("guardModalForm").onsubmit = function(e) {
-          e.preventDefault();
-          const f = e.target;
-          const newGuard = {
-            name: f.name.value.trim(),
-            phone: f.phone.value.trim(),
-            shift: f.shift.value,
-            duty: f.duty.value,
-            location: f.location.value.trim(),
-            lat: f.lat.value ? parseFloat(f.lat.value) : "",
-            lng: f.lng.value ? parseFloat(f.lng.value) : ""
-          };
-          if (!newGuard.name || !newGuard.phone) {
-            document.getElementById("guardModalErr").textContent = "Name and phone required.";
-            return;
-          }
-          if (isEdit) {
-            guards[idx] = newGuard;
-          } else {
-            guards.push(newGuard);
-          }
-          saveGuards(guards);
-          closeModal();
-          renderGuardsTable();
-        };
-        document.getElementById("guardModalBg").onclick = function(e) {
-          if (e.target.id === "guardModalBg") closeModal();
-        };
-      };
-      window.toggleDuty = function(idx) {
-        const guards = getGuards();
-        guards[idx].duty = guards[idx].duty === "on" ? "off" : "on";
-        saveGuards(guards);
-        renderGuardsTable();
-      };
-      window.deleteGuard = function(idx) {
-        if (!confirm("Delete this guard?")) return;
-        const guards = getGuards();
-        guards.splice(idx,1);
-        saveGuards(guards);
-        renderGuardsTable();
-      };
-      window.closeModal = function() {
-        document.getElementById("modal-root").innerHTML = "";
-        document.body.style.overflow = "";
-      };
-    }
+            </div>
+            <!-- Navigation Menu (Scrollable) -->
+            <nav class="flex-1 overflow-y-auto p-6 pt-0">
+                <ul class="space-y-2">
+                    <li><a href="#" class="nav-item flex items-center p-3 rounded-lg hover:bg-sagittarius-white hover:text-sagittarius-blue transition-colors duration-200" data-module="dashboard">Dashboard</a></li>
+                    <li><a href="#" class="nav-item flex items-center p-3 rounded-lg hover:bg-sagittarius-white hover:text-sagittarius-blue transition-colors duration-200" data-module="incident-report">Incident Report</a></li>
+                    <li><a href="#" class="nav-item flex items-center p-3 rounded-lg hover:bg-sagittarius-white hover:text-sagittarius-blue transition-colors duration-200" data-module="guard-tracking">Guard Tracking</a></li>
+                    <li><a href="#" class="nav-item flex items-center p-3 rounded-lg hover:bg-sagittarius-white hover:text-sagittarius-blue transition-colors duration-200" data-module="user-management">User Management</a></li>
+                    <li><a href="#" class="nav-item flex items-center p-3 rounded-lg hover:bg-sagittarius-white hover:text-sagittarius-blue transition-colors duration-200" data-module="payroll">Payroll</a></li>
+                    <li><a href="#" class="nav-item flex items-center p-3 rounded-lg hover:bg-sagittarius-white hover:text-sagittarius-blue transition-colors duration-200" data-module="system-logs">System Logs</a></li>
+                    <li><a href="#" class="nav-item flex items-center p-3 rounded-lg hover:bg-sagittarius-white hover:text-sagittarius-blue transition-colors duration-200" data-module="settings">Settings</a></li>
+                </ul>
+            </nav>
+            <!-- User ID Display & Logout (Fixed at Bottom) -->
+            <div class="p-6">
+                <div class="mt-8 p-4 bg-sagittarius-blue/50 rounded-lg border-2 border-sagittarius-gold/50 shadow-md">
+                    <p class="text-xs font-semibold uppercase text-sagittarius-white/70">User ID</p>
+                    <p id="userIdDisplay" class="text-sm break-all mt-1">Local Session</p>
+                </div>
+                <div class="mt-4">
+                    <button id="logoutBtn" class="w-full text-sagittarius-gold font-bold py-2 px-4 rounded-lg border border-sagittarius-gold hover:bg-sagittarius-gold hover:text-sagittarius-blue transition-colors duration-200">Log Out</button>
+                </div>
+            </div>
+        </aside>
 
-    // --- User Management ---
-    function renderUserManagement() {
-      const main = document.getElementById('mainContent');
-      main.innerHTML = `
-        <div class="dashboard-header">
-          <h1>User Management</h1>
-          <div class="timestamp">&#128337; <span id="userTimestamp"></span></div>
+        <!-- Main Content Area -->
+        <main class="flex-1 p-6 md:p-10 relative overflow-y-auto">
+            <!-- Mobile Menu Toggle -->
+            <button id="menu-toggle" class="md:hidden fixed top-4 right-4 z-50 bg-sagittarius-blue text-sagittarius-gold p-2 rounded-lg shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-16 6h16" />
+                </svg>
+            </button>
+
+            <!-- Dashboard Module -->
+            <div id="dashboard" class="module p-8 rounded-2xl shadow-lg bg-sagittarius-white/90 transform transition-all duration-300">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-sagittarius-blue">Interactive Dashboard</h2>
+                    <div class="text-right">
+                        <p class="text-sm font-medium text-sagittarius-blue/80">Current Time</p>
+                        <p id="currentTimeDisplay" class="text-xl font-bold text-sagittarius-blue">--:--</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Dashboard Cards -->
+                    <div class="bg-sagittarius-blue text-sagittarius-white p-6 rounded-xl shadow-md border-b-4 border-sagittarius-gold">
+                        <p class="text-xl font-bold">Total Incidents</p>
+                        <p id="totalIncidentsMetric" class="text-3xl font-light mt-2">0</p>
+                    </div>
+                    <div class="bg-sagittarius-blue text-sagittarius-white p-6 rounded-xl shadow-md border-b-4 border-sagittarius-gold">
+                        <p class="text-xl font-bold">Total Users</p>
+                        <p id="totalUsersMetric" class="text-3xl font-light mt-2">0</p>
+                    </div>
+                    <div class="bg-sagittarius-blue text-sagittarius-white p-6 rounded-xl shadow-md border-b-4 border-sagittarius-gold">
+                        <p class="text-xl font-bold">Total Guards</p>
+                        <p id="totalGuardsMetric" class="text-3xl font-light mt-2">0</p>
+                    </div>
+                    <div class="bg-sagittarius-blue text-sagittarius-white p-6 rounded-xl shadow-md border-b-4 border-sagittarius-gold">
+                        <p class="text-xl font-bold">Total Clients</p>
+                        <p id="totalClientsMetric" class="text-3xl font-light mt-2">0</p>
+                    </div>
+                    <div class="bg-sagittarius-blue text-sagittarius-white p-6 rounded-xl shadow-md border-b-4 border-sagittarius-gold">
+                        <p class="text-xl font-bold">Total Revenue</p>
+                        <p id="totalRevenueMetric" class="text-3xl font-light mt-2">₵0.00</p>
+                    </div>
+                    <div class="bg-sagittarius-blue text-sagittarius-white p-6 rounded-xl shadow-md border-b-4 border-sagittarius-gold">
+                        <p class="text-xl font-bold">Total Salaries Paid</p>
+                        <p id="totalSalariesPaidMetric" class="text-3xl font-light mt-2">₵0.00</p>
+                    </div>
+                </div>
+
+                <!-- Monthly Incident Trend Chart -->
+                <div class="mt-10 p-6 bg-white rounded-xl shadow-lg border border-sagittarius-blue/10">
+                    <h3 class="text-xl font-bold mb-4 text-sagittarius-blue">Monthly Incident Trend (Last 12 Months)</h3>
+                    <canvas id="incidentChart" height="150"></canvas>
+                </div>
+                
+                <!-- Monthly Client Trend Chart -->
+                <div class="mt-10 p-6 bg-white rounded-xl shadow-lg border border-sagittarius-blue/10">
+                    <h3 class="text-xl font-bold mb-4 text-sagittarius-blue">Monthly Client Registration Trend</h3>
+                    <canvas id="clientChart" height="150"></canvas>
+                </div>
+            </div>
+
+            <!-- Incident Report Module (Hidden by default) -->
+            <div id="incident-report" class="module hidden p-8 rounded-2xl shadow-lg bg-sagittarius-white/90 transform transition-all duration-300">
+                <h2 class="text-3xl font-bold mb-6 text-sagittarius-blue">Incident Report</h2>
+                <button id="openIncidentFormBtn" class="bg-sagittarius-gold text-sagittarius-blue font-bold py-3 px-6 rounded-lg shadow-lg hover:scale-105 transition-transform duration-200 mb-8">
+                    Report New Incident
+                </button>
+                <div id="incidentsDisplay">
+                    <h3 class="text-2xl font-semibold mb-4 text-sagittarius-blue">All Incidents</h3>
+                    <!-- Scrollable Incident Table Container Added -->
+                    <div class="overflow-x-auto overflow-y-auto max-h-[500px] rounded-lg shadow-lg">
+                        <table class="min-w-full incident-table">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Description</th>
+                                    <th>Location</th>
+                                    <th>Reporter</th>
+                                    <th>Date/Time</th>
+                                    <th>Attachments</th>
+                                    <th>Resolution Comment</th>
+                                    <th>Status & Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="incidentsList">
+                                <!-- Incident data will be populated here by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Guard Tracking Module -->
+            <div id="guard-tracking" class="module hidden p-8 rounded-2xl shadow-lg bg-sagittarius-white/90 transform transition-all duration-300">
+                <h2 class="text-3xl font-bold mb-6 text-sagittarius-blue">Guard Tracking</h2>
+                <div class="p-6 rounded-xl shadow-inner bg-sagittarius-white border border-sagittarius-blue/10">
+                    <p class="text-lg text-sagittarius-blue/80 mb-4">Live location and status of all security personnel. </p>
+                    <div id="guardList" class="space-y-3">
+                        <!-- Guard data will be populated here dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Management Module -->
+            <div id="user-management" class="module hidden p-8 rounded-2xl shadow-lg bg-sagittarius-white/90 transform transition-all duration-300">
+                <h2 class="text-3xl font-bold mb-6 text-sagittarius-blue">User Management</h2>
+                <div class="mb-6 flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4">
+                    <button id="openUserFormBtn" class="bg-sagittarius-gold text-sagittarius-blue font-bold py-3 px-6 rounded-lg shadow-lg hover:scale-105 transition-transform duration-200 w-full md:w-auto">
+                        Add New User
+                    </button>
+                    <div class="relative w-full">
+                        <input type="text" id="userSearchInput" placeholder="Search by ID, Name, or National ID" class="w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2 text-sm text-gray-700 pl-10">
+                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                </div>
+                <div id="usersDisplay">
+                    <h3 class="text-2xl font-semibold mb-4 text-sagittarius-blue">Managed Users</h3>
+                    <div id="usersList" class="space-y-4">
+                        <!-- Users will be populated here by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payroll Module -->
+            <div id="payroll" class="module hidden p-8 rounded-2xl shadow-lg bg-sagittarius-white/90 transform transition-all duration-300">
+                <h2 class="text-3xl font-bold mb-6 text-sagittarius-blue">Payroll</h2>
+                <div class="mb-6 flex items-center space-x-4">
+                    <label for="payrollSearch" class="font-semibold text-sagittarius-blue">Search Payroll:</label>
+                    <input type="text" id="payrollSearch" placeholder="Search by ID, Name, or National ID" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2 text-sm text-gray-700">
+                </div>
+                <div class="overflow-x-auto rounded-lg shadow-lg">
+                    <table class="min-w-full payroll-table">
+                        <thead>
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Full Name</th>
+                                <th>Revenue</th>
+                                <th>Days Worked</th>
+                                <th>Gross Salary</th>
+                                <th>Overtime</th>
+                                <th>Bonus</th>
+                                <th>Tax</th>
+                                <th>Net Salary</th>
+                                <th>Payment Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                            <tbody id="payrollList">
+                                <!-- Payroll data will be populated here by JS -->
+                            </tbody>
+                        </table>
+                </div>
+            </div>
+
+            <!-- System Logs Module -->
+            <div id="system-logs" class="module hidden p-8 rounded-2xl shadow-lg bg-sagittarius-white/90 transform transition-all duration-300">
+                <h2 class="text-3xl font-bold mb-6 text-sagittarius-blue">System Logs</h2>
+                <div class="p-6 rounded-xl shadow-inner bg-sagittarius-white border border-sagittarius-blue/10">
+                    <p class="text-lg text-sagittarius-blue/80 mb-4">A comprehensive record of all system activities for auditing and analysis.</p>
+                    <div class="mt-4 mb-8 flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4">
+                        <div class="flex items-center space-x-2 w-full md:w-auto">
+                            <label for="reportMonth" class="text-sm font-semibold">Month:</label>
+                            <select id="reportMonth" class="rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2 text-sm text-gray-700">
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7">July</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center space-x-2 w-full md:w-auto">
+                            <label for="reportYear" class="text-sm font-semibold">Year:</label>
+                            <select id="reportYear" class="rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2 text-sm text-gray-700">
+                                <!-- Years will be populated by JS -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-6 space-y-4 md:space-y-0 md:space-x-4 flex flex-col md:flex-row">
+                        <button id="downloadIncidentsBtn" class="bg-sagittarius-blue text-sagittarius-white font-bold py-3 px-6 rounded-lg shadow-lg hover:scale-105 transition-transform duration-200">
+                            Download Incident Report
+                        </button>
+                        <button id="downloadUsersBtn" class="bg-sagittarius-blue text-sagittarius-white font-bold py-3 px-6 rounded-lg shadow-lg hover:scale-105 transition-transform duration-200">
+                            Download User Report
+                        </button>
+                        <button id="downloadPayrollBtn" class="bg-sagittarius-blue text-sagittarius-white font-bold py-3 px-6 rounded-lg shadow-lg hover:scale-105 transition-transform duration-200">
+                            Download Payroll Report
+                        </button>
+                        <button id="downloadLogsBtn" class="bg-sagittarius-blue text-sagittarius-white font-bold py-3 px-6 rounded-lg shadow-lg hover:scale-105 transition-transform duration-200">
+                            Download System Logs
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-8">
+                    <h3 class="text-2xl font-semibold mb-4 text-sagittarius-blue">Recent Activity</h3>
+                    <div id="logsList" class="space-y-2 p-4 rounded-xl shadow-inner bg-sagittarius-white border border-sagittarius-blue/10 max-h-[400px] overflow-y-auto">
+                        <!-- Logs will be populated here by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Module -->
+            <div id="settings" class="module hidden p-8 rounded-2xl shadow-lg bg-sagittarius-white/90 transform transition-all duration-300">
+                <h2 class="text-3xl font-bold mb-6 text-sagittarius-blue">Settings</h2>
+                <div class="space-y-8">
+                    <!-- Company Settings -->
+                    <div class="p-6 rounded-xl shadow-inner bg-sagittarius-white border border-sagittarius-blue/10">
+                        <h3 class="text-xl font-semibold mb-4 text-sagittarius-blue">Company Settings</h3>
+                        <form id="companySettingsForm" class="space-y-4">
+                            <div>
+                                <label for="companyNameInput" class="block text-sm font-medium text-sagittarius-blue">Company Name</label>
+                                <input type="text" id="companyNameInput" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                            </div>
+                            <div>
+                                <label for="logoUrlInput" class="block text-sm font-medium text-sagittarius-blue">Logo URL</label>
+                                <input type="url" id="logoUrlInput" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                            </div>
+                            <button type="submit" class="bg-sagittarius-gold text-sagittarius-blue font-bold py-2 px-4 rounded-lg hover:scale-105 transition-transform duration-200">Save Changes</button>
+                        </form>
+                    </div>
+
+                    <!-- Theme Settings -->
+                    <div class="p-6 rounded-xl shadow-inner bg-sagittarius-white border border-sagittarius-blue/10">
+                        <h3 class="text-xl font-semibold mb-4 text-sagittarius-blue">Theme</h3>
+                        <div class="flex items-center space-x-4">
+                            <span class="text-sm font-medium text-sagittarius-blue">Light Mode</span>
+                            <label for="darkModeToggle" class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="darkModeToggle" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-sagittarius-gold rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sagittarius-blue"></div>
+                            </label>
+                            <span class="text-sm font-medium text-sagittarius-blue">Dark Mode</span>
+                        </div>
+                    </div>
+
+                    <!-- Privileges -->
+                    <div class="p-6 rounded-xl shadow-inner bg-sagittarius-white border border-sagittarius-blue/10">
+                        <h3 class="text-xl font-semibold mb-4 text-sagittarius-blue">User Privileges</h3>
+                        <p class="text-sm text-sagittarius-blue/80 mb-2">Each role is assigned a specific set of permissions and access to system modules.</p>
+                        <ul class="list-disc list-inside space-y-2 text-sm text-sagittarius-blue">
+                            <li><strong>Admin:</strong> Full access to all modules, including user management, settings, and all reports.</li>
+                            <li><strong>Supervisor:</strong> Access to Incident Report, Guard Tracking, Payroll, and System Logs. Can edit and manage incidents.</li>
+                            <li><strong>Guard:</strong> Can only report new incidents and view their own data.</li>
+                            <li><strong>HR Manager:</strong> Access to User Management, Payroll, and System Logs.</li>
+                            <li><strong>Accountant:</strong> Access to Payroll and downloadable reports.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Security Settings -->
+                    <div class="p-6 rounded-xl shadow-inner bg-sagittarius-white border border-sagittarius-blue/10">
+                        <h3 class="text-xl font-semibold mb-4 text-sagittarius-blue">Security</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <h4 class="font-semibold text-sagittarius-blue">Two-Factor Authentication (2FA)</h4>
+                                <p class="text-sm text-sagittarius-blue/80">Enhance your account's security by requiring a second form of verification. This feature requires a backend service to send verification codes.</p>
+                                <button class="mt-2 bg-sagittarius-blue text-sagittarius-white font-bold py-2 px-4 rounded-lg">Enable 2FA</button>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-sagittarius-blue">Password & User Name Reset</h4>
+                                <p class="text-sm text-sagittarius-blue/80">Allow users to securely reset their credentials. This feature also requires a secure backend service to manage the process and send recovery emails.</p>
+                                <button class="mt-2 bg-sagittarius-blue text-sagittarius-white font-bold py-2 px-4 rounded-lg">Reset My Password</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Login Modal - Appears on page load -->
+    <div id="loginFormModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999]">
+        <div class="bg-sagittarius-white p-8 rounded-2xl shadow-lg w-full max-w-sm">
+            <h3 class="text-2xl font-bold text-sagittarius-blue mb-6 text-center">Login to Sagittarius Security</h3>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="loginUsername" class="block text-sm font-medium text-sagittarius-blue">Username</label>
+                    <input type="text" id="loginUsername" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="loginPassword" class="block text-sm font-medium text-sagittarius-blue">Password</label>
+                    <input type="password" id="loginPassword" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <button type="submit" class="w-full bg-sagittarius-gold text-sagittarius-blue font-bold py-3 px-4 rounded-lg shadow-lg hover:scale-105 transition-transform duration-200">Log In</button>
+            </form>
         </div>
-        <button style="margin-bottom:1rem;background:#27ae60;color:#fff;font-weight:600;" onclick="openUserModal()">+ Add User</button>
-        <div id="usersList"></div>
-      `;
-      function renderUsersList() {
-        const users = getUsers();
-        let table = `<table class="users-table"><thead>
-          <tr><th>ID</th><th>Name</th><th>Address</th><th>Email</th><th>Phone</th><th>Role</th><th>Dept</th><th>Location</th><th>Actions</th></tr>
-          </thead><tbody>`;
-        users.forEach((u, idx) => {
-          table += `<tr>
-            <td>${escapeHTML(u.id)}</td>
-            <td>${escapeHTML(u.name)}</td>
-            <td>${escapeHTML(u.address)}</td>
-            <td>${escapeHTML(u.email)}</td>
-            <td>${escapeHTML(u.phone)}</td>
-            <td>${escapeHTML(u.role)}</td>
-            <td>${escapeHTML(u.department)}</td>
-            <td>${escapeHTML(u.location)}</td>
-            <td>
-              <div class="action-btns">
-                <button class="btn-action edit" onclick="editUser(${idx})">Edit</button>
-                <button class="btn-action delete" onclick="deleteUser(${idx})">Delete</button>
-              </div>
-            </td>
-          </tr>`;
+    </div>
+
+    <!-- Modals for Alerts and Confirmations -->
+    <div id="alertModalContainer" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999] hidden">
+        <div class="bg-sagittarius-white p-6 rounded-xl shadow-2xl max-w-sm w-full border-4 border-sagittarius-gold">
+            <h3 id="alertModalTitle" class="text-xl font-bold mb-2"></h3>
+            <p id="alertModalMessage" class="text-sagittarius-blue/80 mb-4"></p>
+            <div id="alertButtons" class="flex justify-end space-x-2">
+                <button id="alertModalCancel" class="bg-gray-400 text-sagittarius-blue px-4 py-2 rounded-lg hover:scale-105 transition-transform duration-200 hidden">Cancel</button>
+                <button id="alertModalOk" class="bg-sagittarius-blue text-sagittarius-white px-4 py-2 rounded-lg hover:scale-105 transition-transform duration-200">OK</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notification Modal -->
+    <div id="notificationModal" class="fixed bottom-4 right-4 z-[9999] w-80 bg-sagittarius-blue text-sagittarius-white rounded-xl shadow-2xl border-2 border-sagittarius-gold transform translate-x-full transition-transform duration-300 ease-in-out">
+        <div class="p-4 flex justify-between items-center">
+            <div>
+                <h4 id="notificationTitle" class="font-bold"></h4>
+                <p id="notificationMessage" class="text-sm mt-1"></p>
+            </div>
+            <button id="closeNotificationBtn" class="text-sagittarius-white/70 hover:text-sagittarius-white">&times;</button>
+        </div>
+    </div>
+
+
+    <!-- Incident Form Modal -->
+    <div id="incidentFormModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999] hidden">
+        <div class="bg-sagittarius-white p-8 rounded-2xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-semibold text-sagittarius-blue">Submit a New Incident</h3>
+                <button id="closeIncidentFormBtn" class="text-gray-500 hover:text-sagittarius-blue transition-colors duration-200">&times;</button>
+            </div>
+            <form id="incidentForm" class="space-y-4">
+                <input type="hidden" id="incidentId" value="">
+                <div>
+                    <label for="incidentTitle" class="block text-sm font-medium text-sagittarius-blue">Title</label>
+                    <input type="text" id="incidentTitle" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="incidentDescription" class="block text-sm font-medium text-sagittarius-blue">Description</label>
+                    <textarea id="incidentDescription" rows="4" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2"></textarea>
+                </div>
+                <div>
+                    <label for="incidentLocation" class="block text-sm font-medium text-sagittarius-blue">Location</label>
+                    <input type="text" id="incidentLocation" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="incidentReporter" class="block text-sm font-medium text-sagittarius-blue">Reporter Name</label>
+                    <input type="text" id="incidentReporter" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div id="resolutionCommentField" class="hidden">
+                    <label for="resolutionComment" class="block text-sm font-medium text-sagittarius-blue">Resolution Comment</label>
+                    <textarea id="resolutionComment" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2"></textarea>
+                </div>
+                <div>
+                    <label for="incidentAttachments" class="block text-sm font-medium text-sagittarius-blue">Attachments</label>
+                    <input type="file" id="incidentAttachments" multiple class="mt-1 block w-full text-sm text-gray-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-sagittarius-gold file:text-sagittarius-blue
+                        hover:file:bg-sagittarius-gold/80">
+                </div>
+                <button type="submit" class="w-full bg-sagittarius-gold text-sagittarius-blue font-bold py-3 px-4 rounded-lg shadow-lg hover:scale-105 transition-transform duration-200">Submit Incident</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Incident Modal -->
+    <div id="viewIncidentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999] hidden">
+        <div class="bg-sagittarius-white p-8 rounded-2xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-semibold text-sagittarius-blue" id="viewTitle">Incident Details</h3>
+                <button id="closeViewModalBtn" class="text-gray-500 hover:text-sagittarius-blue transition-colors duration-200">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Description:</p>
+                    <p id="viewDescription" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Location:</p>
+                    <p id="viewLocation" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Reporter:</p>
+                    <p id="viewReporter" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Date/Time:</p>
+                    <p id="viewDateTime" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Attachments:</p>
+                    <p id="viewAttachments" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- User Form Modal -->
+    <div id="userFormModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999] hidden">
+        <div class="bg-sagittarius-white p-8 rounded-2xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-semibold text-sagittarius-blue">Add a New User</h3>
+                <button id="closeUserFormBtn" class="text-gray-500 hover:text-sagittarius-blue transition-colors duration-200">&times;</button>
+            </div>
+            <form id="userForm" class="space-y-4">
+                <input type="hidden" id="userIdHidden" value="">
+                <div>
+                    <label for="employeeId" class="block text-sm font-medium text-sagittarius-blue">Employee ID</label>
+                    <input type="text" id="employeeId" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="firstName" class="block text-sm font-medium text-sagittarius-blue">First Name</label>
+                    <input type="text" id="firstName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="lastName" class="block text-sm font-medium text-sagittarius-blue">Last Name</label>
+                    <input type="text" id="lastName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="phoneNumber" class="block text-sm font-medium text-sagittarius-blue">Phone Number</label>
+                    <input type="tel" id="phoneNumber" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="nationalIdType" class="block text-sm font-medium text-sagittarius-blue">National ID Type</label>
+                    <select id="nationalIdType" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                        <option value="Ghana Card">Ghana Card</option>
+                        <option value="Driving Licence">Driving Licence</option>
+                        <option value="Passport">Passport</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="idNumber" class="block text-sm font-medium text-sagittarius-blue">ID Number</label>
+                    <input type="text" id="idNumber" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="emailAddress" class="block text-sm font-medium text-sagittarius-blue">Email Address</label>
+                    <input type="email" id="emailAddress" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="residentialAddress" class="block text-sm font-medium text-sagittarius-blue">Residential Address</label>
+                    <input type="text" id="residentialAddress" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="homeTown" class="block text-sm font-medium text-sagittarius-blue">Home Town</label>
+                    <input type="text" id="homeTown" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="guarantorName" class="block text-sm font-medium text-sagittarius-blue">Guarantor Name</label>
+                    <input type="text" id="guarantorName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="guarantorPhoneNumber" class="block text-sm font-medium text-sagittarius-blue">Guarantor Phone Number</label>
+                    <input type="tel" id="guarantorPhoneNumber" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="userRole" class="block text-sm font-medium text-sagittarius-blue">Role</label>
+                    <select id="userRole" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                        <option value="Guard">Guard</option>
+                        <option value="Supervisor">Supervisor</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Operations Director">Operations Director</option>
+                        <option value="HR Manager">HR Manager</option>
+                        <option value="Accountant">Accountant</option>
+                        <option value="IT Manager">IT Manager</option>
+                        <option value="Marketing Manager">Marketing Manager</option>
+                        <option value="Health and Safety Manager">Health and Safety Manager</option>
+                        <option value="Managing Director">Managing Director</option>
+                        <option value="Marketer">Marketer</option>
+                        <option value="Safety Officer">Safety Officer</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="department" class="block text-sm font-medium text-sagittarius-blue">Department</label>
+                    <select id="department" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                        <option value="Operations">Operations</option>
+                        <option value="HR">HR</option>
+                        <option value="Finance">Finance</option>
+                        <option value="IT">IT</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Health And Safety">Health and Safety</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="assignedShift" class="block text-sm font-medium text-sagittarius-blue">Assigned Shift</label>
+                    <select id="assignedShift" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                        <option value="Day">Day</option>
+                        <option value="Night">Night</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="location" class="block text-sm font-medium text-sagittarius-blue">Location</label>
+                    <input type="text" id="location" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="employmentDate" class="block text-sm font-medium text-sagittarius-blue">Date of Employment</label>
+                    <input type="date" id="employmentDate" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <button type="submit" class="w-full bg-sagittarius-gold text-sagittarius-blue font-bold py-3 px-4 rounded-lg shadow-lg hover:scale-105 transition-transform duration-200">Add User</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- View User Modal -->
+    <div id="viewUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999] hidden">
+        <div class="bg-sagittarius-white p-8 rounded-2xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-semibold text-sagittarius-blue" id="viewUserTitle">User Details</h3>
+                <button id="closeViewUserModalBtn" class="text-gray-500 hover:text-sagittarius-blue transition-colors duration-200">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Employee ID:</p>
+                    <p id="viewEmployeeId" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Full Name:</p>
+                    <p id="viewFullName" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Phone Number:</p>
+                    <p id="viewPhoneNumber" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">National ID Type:</p>
+                    <p id="viewNationalIdType" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">ID Number:</p>
+                    <p id="viewIdNumber" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Email:</p>
+                    <p id="viewEmail" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Residential Address:</p>
+                    <p id="viewResidentialAddress" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Home Town:</p>
+                    <p id="viewHomeTown" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Guarantor Name:</p>
+                    <p id="viewGuarantorName" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Guarantor Phone Number:</p>
+                    <p id="viewGuarantorPhoneNumber" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Role:</p>
+                    <p id="viewUserRole" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Department:</p>
+                    <p id="viewDepartment" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Assigned Shift:</p>
+                    <p id="viewAssignedShift" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Location:</p>
+                    <p id="viewLocationUser" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Date of Employment:</p>
+                    <p id="viewEmploymentDate" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payroll View Modal -->
+    <div id="viewPayrollModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999] hidden">
+        <div class="bg-sagittarius-white p-8 rounded-2xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-semibold text-sagittarius-blue">Payroll Details</h3>
+                <button id="closeViewPayrollBtn" class="text-gray-500 hover:text-sagittarius-blue transition-colors duration-200">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Employee:</p>
+                    <p id="payrollFullName" class="mt-1 text-sagittarius-blue font-bold"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Days Worked:</p>
+                    <p id="payrollDaysWorked" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Gross Salary:</p>
+                    <p id="payrollGross" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Overtime:</p>
+                    <p id="payrollOvertime" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Bonus:</p>
+                    <p id="payrollBonus" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Tax:</p>
+                    <p id="payrollTax" class="mt-1 text-sagittarius-blue"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-sagittarius-blue/80">Net Salary:</p>
+                    <p id="payrollNet" class="mt-1 text-sagittarius-blue font-bold text-lg"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Payroll Edit Form Modal -->
+    <div id="editPayrollModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999] hidden">
+        <div class="bg-sagittarius-white p-8 rounded-2xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-semibold text-sagittarius-blue">Edit Payroll</h3>
+                <button id="closeEditPayrollBtn" class="text-gray-500 hover:text-sagittarius-blue transition-colors duration-200">&times;</button>
+            </div>
+            <form id="editPayrollForm" class="space-y-4">
+                <input type="hidden" id="editPayrollUserId" value="">
+                <div>
+                    <label for="editPayrollDate" class="block text-sm font-medium text-sagittarius-blue">Date</label>
+                    <input type="date" id="editPayrollDate" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="editDaysWorked" class="block text-sm font-medium text-sagittarius-blue">Days Worked</label>
+                    <input type="number" id="editDaysWorked" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="editGrossSalary" class="block text-sm font-medium text-sagittarius-blue">Gross Salary</label>
+                    <input type="number" id="editGrossSalary" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="editOvertime" class="block text-sm font-medium text-sagittarius-blue">Overtime (₵)</label>
+                    <input type="number" id="editOvertime" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="editBonus" class="block text-sm font-medium text-sagittarius-blue">Bonus (₵)</label>
+                    <input type="number" id="editBonus" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="editTax" class="block text-sm font-medium text-sagittarius-blue">Tax (₵)</label>
+                    <input type="number" id="editTax" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <div>
+                    <label for="editRevenue" class="block text-sm font-medium text-sagittarius-blue">Revenue (₵)</label>
+                    <input type="number" id="editRevenue" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sagittarius-blue focus:ring focus:ring-sagittarius-blue focus:ring-opacity-50 p-2">
+                </div>
+                <button type="submit" class="w-full bg-sagittarius-gold text-sagittarius-blue font-bold py-3 px-4 rounded-lg shadow-lg hover:scale-105 transition-transform duration-200">Save Payroll Changes</button>
+            </form>
+        </div>
+    </div>
+
+
+    <script>
+        // Global variables for data storage and UI state
+        let db;
+        let allUsers = []; 
+        let allIncidents = [];
+        let allGuards = []; 
+        let allLogs = [];
+        let monthlyIncidentsChart; // Global chart instance to destroy/re-create
+        let monthlyClientsChart; // Global chart instance for the new client chart
+
+        // IndexedDB Configuration
+        const DB_NAME = 'sagittariusDB';
+        const DB_VERSION = 1;
+        const STORES = ['incidents', 'managedUsers', 'guards', 'systemLogs', 'settings'];
+
+        // Helper function to open IndexedDB and handle versioning
+        const openDB = () => {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    STORES.forEach(storeName => {
+                        if (!db.objectStoreNames.contains(storeName)) {
+                            db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
+                        }
+                    });
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    reject(event.target.error);
+                };
+            });
+        };
+
+        // Helper function to get data from a store
+        const getDataFromStore = (storeName) => {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = store.getAll();
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        };
+
+        // Helper function to add/update data in a store
+        const putDataInStore = (storeName, data) => {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.put(data);
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        };
+
+        // Helper function to delete data from a store
+        const deleteDataFromStore = (storeName, id) => {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.delete(id);
+
+                request.onsuccess = () => resolve(true);
+                request.onerror = () => reject(request.error);
+            });
+        };
+        
+        // --- SOUND NOTIFICATION FUNCTION ---
+        const playNotificationSound = () => {
+            // Check for AudioContext support
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+
+            try {
+                // Initialize context on user interaction (handled by login/button clicks)
+                const audioCtx = new AudioContext();
+                
+                // Create an oscillator (tone generator)
+                const oscillator = audioCtx.createOscillator();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // 440 Hz (A4)
+                
+                // Create gain node (volume control)
+                const gainNode = audioCtx.createGain();
+                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime); // 50% volume
+
+                // Connect nodes: Oscillator -> Gain -> Destination
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                // Start the oscillator immediately
+                oscillator.start();
+
+                // Stop the oscillator after a short delay (150ms)
+                setTimeout(() => {
+                    oscillator.stop();
+                }, 150);
+            } catch (e) {
+                // Handle cases where audio generation fails (e.g., security restrictions)
+                console.warn("Could not play notification sound:", e);
+            }
+        };
+        // --- END SOUND NOTIFICATION FUNCTION ---
+
+        // Function to update the clock every second
+        const updateClock = () => {
+            const now = new Date();
+            // Format time as HH:MM:SS (24-hour format)
+            const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+            document.getElementById('currentTimeDisplay').innerText = timeString;
+        };
+
+        // Refresh all UI components
+        const refreshUI = async () => {
+            try {
+                allIncidents = await getDataFromStore('incidents');
+                allUsers = await getDataFromStore('managedUsers');
+                allGuards = allUsers.filter(user => user.role === 'Guard');
+                allLogs = await getDataFromStore('systemLogs');
+                
+                renderIncidents(allIncidents);
+                renderUsers(allUsers);
+                renderPayroll(allUsers);
+                renderGuards(allGuards);
+                renderDashboardMetrics();
+                renderMonthlyIncidentsChart();
+                renderMonthlyClientsChart(); // Call the client chart function
+                renderLogs(allLogs);
+                
+                // Load and apply settings
+                const settings = await getDataFromStore('settings');
+                const currentSettings = settings.find(s => s.id === 1) || { companyName: 'Sagittarius Security', darkMode: false };
+                document.getElementById('companyNameInput').value = currentSettings.companyName;
+                document.getElementById('companyNameDisplay').innerText = currentSettings.companyName;
+                document.getElementById('darkModeToggle').checked = currentSettings.darkMode;
+                document.body.classList.toggle('dark', currentSettings.darkMode);
+
+            } catch (e) {
+                console.error("Error refreshing UI:", e);
+                showModal("Database Error", "Failed to load data from IndexedDB.");
+            }
+        };
+
+
+        // Display Modal function as a replacement for alert()
+        const showModal = (title, message, isConfirm = false) => {
+            const modalContainer = document.getElementById('alertModalContainer');
+            document.getElementById('alertModalTitle').innerText = title;
+            document.getElementById('alertModalMessage').innerText = message;
+            const okBtn = document.getElementById('alertModalOk');
+            const cancelBtn = document.getElementById('alertModalCancel');
+            
+            cancelBtn.classList.toggle('hidden', !isConfirm);
+            modalContainer.classList.remove('hidden');
+
+            return new Promise(resolve => {
+                okBtn.onclick = () => {
+                    modalContainer.classList.add('hidden');
+                    resolve(true);
+                };
+                cancelBtn.onclick = () => {
+                    modalContainer.classList.add('hidden');
+                    resolve(false);
+                };
+            });
+        };
+
+        const showNotification = (title, message) => {
+            const notificationModal = document.getElementById('notificationModal');
+            document.getElementById('notificationTitle').innerText = title;
+            document.getElementById('notificationMessage').innerText = message;
+            
+            // Show the modal by sliding it in
+            notificationModal.classList.remove('translate-x-full');
+            
+            // Automatically hide it after 5 seconds
+            setTimeout(() => {
+                notificationModal.classList.add('translate-x-full');
+            }, 5000);
+        };
+
+        // Function to log system activity
+        const logSystemActivity = async (activity, title) => {
+            const logEntry = {
+                timestamp: new Date().toISOString(),
+                activity: activity,
+                title: title
+            };
+            try {
+                await putDataInStore('systemLogs', logEntry);
+                showNotification(title, activity);
+                playNotificationSound(); // Trigger sound notification
+            } catch (e) {
+                console.error("Error logging activity: ", e);
+            }
+        };
+
+        // DOM Elements
+        const appContainer = document.getElementById('appContainer');
+        const loginFormModal = document.getElementById('loginFormModal');
+        const loginForm = document.getElementById('loginForm');
+        const loginUsernameInput = document.getElementById('loginUsername');
+        const loginPasswordInput = document.getElementById('loginPassword');
+
+        const main = document.querySelector('main');
+        const navItems = document.querySelectorAll('.nav-item');
+        const sidebar = document.getElementById('sidebar');
+        const menuToggle = document.getElementById('menu-toggle');
+        const openIncidentFormBtn = document.getElementById('openIncidentFormBtn');
+        const incidentFormModal = document.getElementById('incidentFormModal');
+        const closeIncidentFormBtn = document.getElementById('closeIncidentFormBtn');
+        const viewIncidentModal = document.getElementById('viewIncidentModal');
+        const closeViewModalBtn = document.getElementById('closeViewModalBtn');
+        const openUserFormBtn = document.getElementById('openUserFormBtn');
+        const userFormModal = document.getElementById('userFormModal');
+        const closeUserFormBtn = document.getElementById('closeUserFormBtn');
+        const viewUserModal = document.getElementById('viewUserModal');
+        const closeViewUserModalBtn = document.getElementById('closeViewUserModalBtn');
+        const viewPayrollModal = document.getElementById('viewPayrollModal');
+        const closeViewPayrollBtn = document.getElementById('closeViewPayrollBtn');
+        const editPayrollModal = document.getElementById('editPayrollModal');
+        const closeEditPayrollBtn = document.getElementById('closeEditPayrollBtn');
+        const editDaysWorkedInput = document.getElementById('editDaysWorked');
+        const editOvertimeInput = document.getElementById('editOvertime');
+        const editBonusInput = document.getElementById('editBonus');
+        const editGrossSalaryInput = document.getElementById('editGrossSalary');
+        const editTaxInput = document.getElementById('editTax');
+        const payrollSearchInput = document.getElementById('payrollSearch');
+        const userSearchInput = document.getElementById('userSearchInput');
+        const downloadIncidentsBtn = document.getElementById('downloadIncidentsBtn');
+        const downloadUsersBtn = document.getElementById('downloadUsersBtn');
+        const downloadPayrollBtn = document.getElementById('downloadPayrollBtn');
+        const downloadLogsBtn = document.getElementById('downloadLogsBtn');
+        const reportMonthSelect = document.getElementById('reportMonth');
+        const reportYearSelect = document.getElementById('reportYear');
+        const logsList = document.getElementById('logsList');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const closeNotificationBtn = document.getElementById('closeNotificationBtn');
+        const notificationModal = document.getElementById('notificationModal');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const companySettingsForm = document.getElementById('companySettingsForm');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+
+        // --- AUTHENTICATION LOGIC (Client-Side Only, NOT SECURE) ---
+        const loginUser = (username, password) => {
+            // This is a dummy check for demonstration purposes only.
+            // In a real application, this would be a secure API call to a backend.
+            if (username === 'admin' && password === 'password') {
+                localStorage.setItem('isLoggedIn', 'true');
+                return true;
+            }
+            return false;
+        };
+
+        const checkLoginStatus = () => {
+            return localStorage.getItem('isLoggedIn') === 'true';
+        };
+        
+        const logoutUser = () => {
+            localStorage.removeItem('isLoggedIn');
+            appContainer.classList.add('hidden');
+            loginFormModal.classList.remove('hidden');
+            logSystemActivity('User logged out.', 'User Logout');
+        }
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = loginUsernameInput.value;
+            const password = loginPasswordInput.value;
+            if (loginUser(username, password)) {
+                loginFormModal.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                logSystemActivity('User logged in.', 'User Login');
+                refreshUI();
+            } else {
+                showModal("Login Failed", "Invalid username or password.");
+            }
         });
-        table += `</tbody></table>`;
-        document.getElementById("usersList").innerHTML = table;
-      }
-      function updateUserTimestamp() {
-        document.getElementById('userTimestamp').textContent = getNowTimestamp();
-      }
-      renderUsersList();
-      updateUserTimestamp();
-      setInterval(updateUserTimestamp, 1000);
-      window.openUserModal = function(idx) {
-        const users = getUsers();
-        const isEdit = typeof idx === "number";
-        const u = isEdit ? {...users[idx]} : {id: String(1000+users.length+1), name:"", address:"", email:"", phone:"", role:"", department:"", location:""};
-        document.getElementById("modal-root").innerHTML = `
-          <div class="modal-bg" id="userModalBg">
-            <form class="modal" id="userModalForm">
-              <h2>${isEdit ? "Edit User" : "Add User"}</h2>
-              <div class="form-error" id="userModalErr"></div>
-              <label>ID</label>
-              <input type="text" name="id" value="${escapeHTML(u.id)}" readonly style="background:#e9edf6;font-weight:bold;" />
-              <label>Name*</label>
-              <input type="text" name="name" required maxlength="80" value="${escapeHTML(u.name)}"/>
-              <label>Address*</label>
-              <input type="text" name="address" required maxlength="120" value="${escapeHTML(u.address)}"/>
-              <label>Email*</label>
-              <input type="email" name="email" required maxlength="80" value="${escapeHTML(u.email)}"/>
-              <label>Phone*</label>
-              <input type="tel" name="phone" required maxlength="30" value="${escapeHTML(u.phone)}"/>
-              <label>Role*</label>
-              <input type="text" name="role" required maxlength="30" value="${escapeHTML(u.role)}"/>
-              <label>Department*</label>
-              <input type="text" name="department" required maxlength="30" value="${escapeHTML(u.department)}"/>
-              <label>Location*</label>
-              <input type="text" name="location" required maxlength="60" value="${escapeHTML(u.location)}"/>
-              <div class="modal-actions">
-                <button type="button" class="cancel" onclick="closeModal()">Cancel</button>
-                <button type="submit">${isEdit ? "Save" : "Add"}</button>
-              </div>
-            </form>
-          </div>
-        `;
-        document.body.style.overflow = 'hidden';
-        document.getElementById("userModalForm").onsubmit = function(e) {
-          e.preventDefault();
-          const f = e.target;
-          const userObj = {
-            id: f.id.value.trim(),
-            name: f.name.value.trim(),
-            address: f.address.value.trim(),
-            email: f.email.value.trim(),
-            phone: f.phone.value.trim(),
-            role: f.role.value.trim(),
-            department: f.department.value.trim(),
-            location: f.location.value.trim()
-          };
-          if (Object.values(userObj).some(v=>!v)) {
-            document.getElementById('userModalErr').textContent = "All fields required";
-            return;
-          }
-          if (isEdit) users[idx] = userObj;
-          else users.push(userObj);
-          saveUsers(users);
-          closeModal();
-          renderUsersList();
-        };
-        document.getElementById("userModalBg").onclick = function(e) {
-          if (e.target.id === "userModalBg") closeModal();
-        };
-      };
-      window.editUser = function(idx) { openUserModal(idx); };
-      window.deleteUser = function(idx) {
-        if (!confirm("Delete this user?")) return;
-        const users = getUsers();
-        users.splice(idx,1);
-        saveUsers(users);
-        renderUsersList();
-      };
-      window.closeModal = function() {
-        document.getElementById("modal-root").innerHTML = "";
-        document.body.style.overflow = "";
-      };
-    }
 
-    // --- System Reports ---
-    function renderReports() {
-      const main = document.getElementById('mainContent');
-      const inc = getIncidents(), users = getUsers(), logs = getLogs(), guards = getGuards();
-      main.innerHTML = `
-        <div class="dashboard-header">
-          <h1>System Reports</h1>
-          <div class="timestamp">&#128337; <span id="reportTimestamp"></span></div>
-        </div>
-        <div id="reportDownloadBtns"></div>
-        <div id="reportTables"></div>
-      `;
-      document.getElementById("reportDownloadBtns").innerHTML = `
-        <button class="report-download-btn" onclick='downloadCsv("incidents.csv",arrayToCsv(${JSON.stringify(inc)},[
-          {label:"Title",key:"title"},{label:"Description",key:"description"},{label:"Location",key:"location"},
-          {label:"Reporter",key:"reporter"},{label:"Date",key:"date"},{label:"Time",key:"time"}]))'>Download Incidents (.csv)</button>
-        <button class="report-download-btn" onclick='downloadCsv("users.csv",arrayToCsv(${JSON.stringify(users)},[
-          {label:"ID",key:"id"},{label:"Name",key:"name"},{label:"Address",key:"address"},{label:"Email",key:"email"},
-          {label:"Phone",key:"phone"},{label:"Role",key:"role"},{label:"Dept",key:"department"},{label:"Location",key:"location"}]))'>Download Users (.csv)</button>
-        <button class="report-download-btn" onclick='downloadCsv("logs.csv",arrayToCsv(${JSON.stringify(logs)},[
-          {label:"Action",key:"action"},{label:"Timestamp",key:"timestamp"}]))'>Download Logs (.csv)</button>
-        <button class="report-download-btn" onclick='downloadCsv("guards.csv",arrayToCsv(${JSON.stringify(guards)},[
-          {label:"Name",key:"name"},{label:"Phone",key:"phone"},{label:"Location",key:"location"},{label:"Shift",key:"shift"},{label:"Duty",key:"duty"},{label:"Latitude",key:"lat"},{label:"Longitude",key:"lng"}]))'>Download Guards (.csv)</button>
-      `;
-      document.getElementById("reportTables").innerHTML = `
-        <h4 style="margin-top:1.2rem;">Incidents Table</h4>
-        <table class="incidents-table">
-          <thead><tr><th>Title</th><th>Description</th><th>Location</th><th>Reporter</th><th>Date</th><th>Time</th></tr></thead>
-          <tbody>${inc.map(i=>`<tr><td>${i.title}</td><td>${i.description}</td><td>${i.location}</td><td>${i.reporter}</td><td>${i.date}</td><td>${i.time}</td></tr>`).join("")}</tbody>
-        </table>
-        <h4 style="margin-top:1.2rem;">Users Table</h4>
-        <table class="users-table">
-          <thead><tr><th>ID</th><th>Name</th><th>Address</th><th>Email</th><th>Phone</th><th>Role</th><th>Dept</th><th>Location</th></tr></thead>
-          <tbody>${users.map(u=>`<tr><td>${u.id}</td><td>${u.name}</td><td>${u.address}</td><td>${u.email}</td><td>${u.phone}</td><td>${u.role}</td><td>${u.department}</td><td>${u.location}</td></tr>`).join("")}</tbody>
-        </table>
-        <h4 style="margin-top:1.2rem;">Guards Table</h4>
-        <table class="guards-table">
-          <thead><tr><th>Name</th><th>Phone</th><th>Location</th><th>Shift</th><th>Duty</th><th>Latitude</th><th>Longitude</th></tr></thead>
-          <tbody>${guards.map(g=>`<tr><td>${g.name}</td><td>${g.phone}</td><td>${g.location}</td><td>${g.shift}</td><td>${g.duty}</td><td>${g.lat}</td><td>${g.lng}</td></tr>`).join("")}</tbody>
-        </table>
-        <h4 style="margin-top:1.2rem;">Logs</h4>
-        <table class="logs-table">
-          <thead><tr><th>Action</th><th>Timestamp</th></tr></thead>
-          <tbody>${logs.map(l=>`<tr><td>${l.action}</td><td>${l.timestamp}</td></tr>`).join("")}</tbody>
-        </table>
-      `;
-      function updateReportTimestamp() {
-        document.getElementById('reportTimestamp').textContent = getNowTimestamp();
-      }
-      updateReportTimestamp();
-      setInterval(updateReportTimestamp, 1000);
-    }
-    // --- Initial Load ---
-    renderDashboard();
-  </script>
+        logoutBtn.addEventListener('click', async () => {
+            const confirmed = await showModal("Log Out", "Are you sure you want to log out?", true);
+            if (confirmed) {
+                logoutUser();
+            }
+        });
+
+
+        // Navigation logic
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const moduleName = e.target.dataset.module;
+
+                // Toggle active class on navigation items
+                navItems.forEach(nav => nav.classList.remove('bg-sagittarius-gold', 'text-sagittarius-blue'));
+                e.target.classList.add('bg-sagittarius-gold', 'text-sagittarius-blue');
+
+                // Hide all modules and show the selected one
+                document.querySelectorAll('.module').forEach(mod => mod.classList.add('hidden'));
+                document.getElementById(moduleName).classList.remove('hidden');
+
+                // Close sidebar on mobile
+                if (window.innerWidth < 768) {
+                    sidebar.classList.add('-translate-x-full');
+                }
+            });
+        });
+
+        // Mobile menu toggle
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('-translate-x-full');
+        });
+
+        // Incident Form Modal Logic
+        openIncidentFormBtn.addEventListener('click', () => {
+            document.getElementById('incidentForm').reset();
+            document.getElementById('incidentId').value = '';
+            document.querySelector('#incidentFormModal h3').innerText = 'Submit a New Incident';
+            document.getElementById('resolutionCommentField').classList.add('hidden');
+            document.getElementById('resolutionComment').value = '';
+            incidentFormModal.classList.remove('hidden');
+        });
+
+        closeIncidentFormBtn.addEventListener('click', () => {
+            incidentFormModal.classList.add('hidden');
+        });
+
+        closeViewModalBtn.addEventListener('click', () => {
+            viewIncidentModal.classList.add('hidden');
+        });
+        
+        closeNotificationBtn.addEventListener('click', () => {
+            notificationModal.classList.add('translate-x-full');
+        });
+
+
+        // User Form Modal Logic
+        openUserFormBtn.addEventListener('click', () => {
+            document.getElementById('userForm').reset();
+            document.getElementById('userIdHidden').value = '';
+            document.querySelector('#userFormModal h3').innerText = 'Add a New User';
+            document.querySelector('#userForm button[type="submit"]').innerText = 'Add User';
+            userFormModal.classList.remove('hidden');
+        });
+
+        closeUserFormBtn.addEventListener('click', () => {
+            userFormModal.classList.add('hidden');
+        });
+
+        closeViewUserModalBtn.addEventListener('click', () => {
+            viewUserModal.classList.add('hidden');
+        });
+
+        // Payroll Modal Logic
+        closeViewPayrollBtn.addEventListener('click', () => {
+            viewPayrollModal.classList.add('hidden');
+        });
+
+        closeEditPayrollBtn.addEventListener('click', () => {
+            editPayrollModal.classList.add('hidden');
+        });
+
+
+        // Initially select the dashboard nav item
+        document.querySelector('[data-module="dashboard"]').click();
+
+        // Incident Report Form Submission
+        document.getElementById('incidentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('incidentTitle').value;
+            const description = document.getElementById('incidentDescription').value;
+            const location = document.getElementById('incidentLocation').value;
+            const reporter = document.getElementById('incidentReporter').value;
+            const attachments = document.getElementById('incidentAttachments').files;
+            const attachmentNames = Array.from(attachments).map(file => file.name);
+            const incidentId = document.getElementById('incidentId').value;
+            const resolutionComment = document.getElementById('resolutionComment').value;
+
+
+            try {
+                if (incidentId) {
+                    const incident = allIncidents.find(i => i.id === parseInt(incidentId));
+                    if (incident) {
+                        incident.title = title;
+                        incident.description = description;
+                        incident.location = location;
+                        incident.reporter = reporter;
+                        incident.attachments = attachmentNames;
+                        incident.resolutionComment = resolutionComment; // Save comment
+                        await putDataInStore('incidents', incident);
+                        logSystemActivity(`Updated incident "${title}".`, 'Incident Updated');
+                        showModal("Success", "Incident updated successfully!");
+                    }
+                } else {
+                    const newIncident = {
+                        title: title,
+                        description: description,
+                        location: location,
+                        reporter: reporter,
+                        timestamp: new Date().toISOString(),
+                        attachments: attachmentNames,
+                        status: 'Open',
+                        resolutionComment: ''
+                    };
+                    await putDataInStore('incidents', newIncident);
+                    logSystemActivity(`Reported a new incident: "${title}".`, 'New Incident');
+                    showModal("Success", "Incident submitted successfully!");
+                }
+                document.getElementById('incidentForm').reset();
+                incidentFormModal.classList.add('hidden');
+                refreshUI();
+            } catch (e) {
+                console.error("Error submitting document: ", e);
+                showModal("Error", "Failed to submit incident. Please try again.");
+            }
+        });
+
+        // User Management Form Submission
+        document.getElementById('userForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const userData = {
+                employeeId: document.getElementById('employeeId').value,
+                firstName: document.getElementById('firstName').value,
+                lastName: document.getElementById('lastName').value,
+                phoneNumber: document.getElementById('phoneNumber').value,
+                nationalIdType: document.getElementById('nationalIdType').value,
+                idNumber: document.getElementById('idNumber').value,
+                emailAddress: document.getElementById('emailAddress').value,
+                residentialAddress: document.getElementById('residentialAddress').value,
+                homeTown: document.getElementById('homeTown').value,
+                guarantorName: document.getElementById('guarantorName').value,
+                guarantorPhoneNumber: document.getElementById('guarantorPhoneNumber').value,
+                role: document.getElementById('userRole').value,
+                department: document.getElementById('department').value,
+                assignedShift: document.getElementById('assignedShift').value,
+                location: document.getElementById('location').value,
+                employmentDate: document.getElementById('employmentDate').value,
+                createdAt: new Date().toISOString(),
+                // Initialize payroll data
+                daysWorked: 0,
+                overtime: 0,
+                bonus: 0,
+                grossSalary: 0,
+                tax: 0,
+                payrollDate: new Date().toISOString().substring(0, 10),
+                paymentStatus: 'Pending',
+                revenue: 0
+            };
+
+            const userDocId = document.getElementById('userIdHidden').value;
+
+            // --- DUPLICATE CHECKING LOGIC ---
+            const existingUserConflict = allUsers.some(user => {
+                // Check if this is NOT the user currently being edited (userDocId will be empty for new users)
+                const isDifferentUser = !userDocId || user.id !== parseInt(userDocId);
+
+                // Check for conflicts: duplicate employeeId OR duplicate idNumber
+                const employeeIdConflict = user.employeeId === userData.employeeId;
+                const nationalIdConflict = user.idNumber === userData.idNumber;
+
+                return isDifferentUser && (employeeIdConflict || nationalIdConflict);
+            });
+
+            if (existingUserConflict) {
+                showModal("Submission Error", "A user with this **Employee ID** or **National ID Number** already exists in the system. Please verify the information.");
+                return; // Stop the submission
+            }
+            // --- END DUPLICATE CHECKING LOGIC ---
+
+            try {
+                if (userDocId) {
+                    const user = allUsers.find(u => u.id === parseInt(userDocId));
+                    if (user) {
+                        const oldRole = user.role;
+                        const updatedUser = { ...user, ...userData };
+                        await putDataInStore('managedUsers', updatedUser);
+                        
+                        if (updatedUser.role === 'Guard' && oldRole !== 'Guard') {
+                            const guardData = { id: updatedUser.id, firstName: updatedUser.firstName, lastName: updatedUser.lastName, phoneNumber: updatedUser.phoneNumber, assignedShift: updatedUser.assignedShift, location: updatedUser.location };
+                            await putDataInStore('guards', guardData);
+                        } else if (updatedUser.role !== 'Guard' && oldRole === 'Guard') {
+                            await deleteDataFromStore('guards', updatedUser.id);
+                        } else if (updatedUser.role === 'Guard' && oldRole === 'Guard') {
+                            const guardData = { id: updatedUser.id, firstName: updatedUser.firstName, lastName: updatedUser.lastName, phoneNumber: updatedUser.phoneNumber, assignedShift: updatedUser.assignedShift, location: updatedUser.location };
+                            await putDataInStore('guards', guardData);
+                        }
+                        
+                        logSystemActivity(`Updated user profile for "${userData.firstName} ${userData.lastName}".`, 'User Updated');
+                        showModal("Success", `User "${userData.firstName} ${userData.lastName}" updated successfully!`);
+                    }
+                } else {
+                    const newUserId = await putDataInStore('managedUsers', userData);
+                    if (userData.role === 'Guard') {
+                         await putDataInStore('guards', { id: newUserId, firstName: userData.firstName, lastName: userData.lastName, phoneNumber: userData.phoneNumber, assignedShift: userData.assignedShift, location: userData.location });
+                    }
+                    logSystemActivity(`Added a new user: "${userData.firstName} ${userData.lastName}".`, 'New User Added');
+                    showModal("Success", `User "${userData.firstName} ${userData.lastName}" added successfully!`);
+                }
+                document.getElementById('userForm').reset();
+                userFormModal.classList.add('hidden');
+                refreshUI();
+            } catch (e) {
+                console.error("Error submitting user: ", e);
+                showModal("Error", "Failed to submit user. Please try again.");
+            }
+        });
+        
+        // Payroll Form Submission
+        document.getElementById('editPayrollForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userDocId = parseInt(document.getElementById('editPayrollUserId').value);
+            const user = allUsers.find(u => u.id === userDocId);
+            
+            if (!user) {
+                showModal("Error", "User not found.");
+                return;
+            }
+
+            const newDaysWorked = parseInt(document.getElementById('editDaysWorked').value, 10);
+            const newGrossSalary = parseFloat(document.getElementById('editGrossSalary').value);
+            const newOvertime = parseFloat(document.getElementById('editOvertime').value);
+            const newBonus = parseInt(document.getElementById('editBonus').value, 10);
+            const newPayrollDate = document.getElementById('editPayrollDate').value;
+            const newTax = parseFloat(document.getElementById('editTax').value);
+            const newRevenue = parseFloat(document.getElementById('editRevenue').value);
+
+            try {
+                user.daysWorked = newDaysWorked;
+                user.grossSalary = newGrossSalary;
+                user.overtime = newOvertime;
+                user.bonus = newBonus;
+                user.payrollDate = newPayrollDate;
+                user.tax = newTax;
+                user.revenue = newRevenue;
+                await putDataInStore('managedUsers', user);
+                
+                logSystemActivity(`Updated payroll details for "${user.firstName} ${user.lastName}".`, 'Payroll Processed');
+                editPayrollModal.classList.add('hidden');
+                showModal("Success", "Payroll details updated successfully!");
+                refreshUI();
+            } catch (e) {
+                console.error("Error updating payroll:", e);
+                showModal("Error", "Failed to update payroll. Please try again.");
+            }
+        });
+
+
+        // Functions to handle incident actions
+        const handleView = (incident) => {
+            document.getElementById('viewTitle').innerText = incident.title;
+            document.getElementById('viewDescription').innerText = incident.description;
+            document.getElementById('viewLocation').innerText = incident.location;
+            document.getElementById('viewReporter').innerText = incident.reporter;
+            const date = new Date(incident.timestamp);
+            document.getElementById('viewDateTime').innerText = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+            document.getElementById('viewAttachments').innerText = incident.attachments.length > 0 ? incident.attachments.length : 'None';
+            viewIncidentModal.classList.remove('hidden');
+        };
+
+        const handleEdit = (incident) => {
+            document.getElementById('incidentId').value = incident.id;
+            document.getElementById('incidentTitle').value = incident.title;
+            document.getElementById('incidentDescription').value = incident.description;
+            document.getElementById('incidentLocation').value = incident.location;
+            document.getElementById('incidentReporter').value = incident.reporter;
+            
+            // Populate Resolution Comment field
+            document.getElementById('resolutionComment').value = incident.resolutionComment || '';
+            document.getElementById('resolutionCommentField').classList.remove('hidden');
+
+            document.querySelector('#incidentFormModal h3').innerText = 'Edit Incident';
+            incidentFormModal.classList.remove('hidden');
+        };
+
+        const handleDelete = async (incidentId) => {
+            const confirmed = await showModal("Confirm Deletion", "Are you sure you want to delete this incident?", true);
+            if (confirmed) {
+                try {
+                    const incident = allIncidents.find(i => i.id === incidentId);
+                    await deleteDataFromStore('incidents', incidentId);
+                    logSystemActivity(`Deleted incident "${incident.title}".`, 'Incident Deleted');
+                    showModal("Success", "Incident deleted successfully!");
+                    refreshUI();
+                } catch (e) {
+                    console.error("Error deleting document: ", e);
+                    showModal("Error", "Failed to delete incident. Please try again.");
+                }
+            }
+        };
+
+        // Functions to handle user actions
+        const handleEditUser = (user) => {
+            document.getElementById('userIdHidden').value = user.id;
+            document.getElementById('employeeId').value = user.employeeId;
+            document.getElementById('firstName').value = user.firstName;
+            document.getElementById('lastName').value = user.lastName;
+            document.getElementById('phoneNumber').value = user.phoneNumber;
+            document.getElementById('nationalIdType').value = user.nationalIdType;
+            document.getElementById('idNumber').value = user.idNumber;
+            document.getElementById('emailAddress').value = user.emailAddress;
+            document.getElementById('residentialAddress').value = user.residentialAddress;
+            document.getElementById('homeTown').value = user.homeTown;
+            document.getElementById('guarantorName').value = user.guarantorName;
+            document.getElementById('guarantorPhoneNumber').value = user.guarantorPhoneNumber;
+            document.getElementById('userRole').value = user.role;
+            document.getElementById('department').value = user.department;
+            document.getElementById('assignedShift').value = user.assignedShift || 'Day';
+            document.getElementById('location').value = user.location;
+            document.getElementById('employmentDate').value = user.employmentDate;
+            document.querySelector('#userFormModal h3').innerText = 'Edit User';
+            document.querySelector('#userForm button[type="submit"]').innerText = 'Save Changes';
+            userFormModal.classList.remove('hidden');
+        };
+
+        const handleDeleteUser = async (userDocId) => {
+            const confirmed = await showModal("Confirm Deletion", "Are you sure you want to delete this user?", true);
+            if (confirmed) {
+                try {
+                    const user = allUsers.find(u => u.id === userDocId);
+                    await deleteDataFromStore('managedUsers', userDocId);
+                    await deleteDataFromStore('guards', userDocId);
+                    logSystemActivity(`Deleted user "${user.firstName} ${user.lastName}".`, 'User Deleted');
+                    showModal("Success", "User deleted successfully!");
+                    refreshUI();
+                } catch (e) {
+                    console.error("Error deleting user: ", e);
+                    showModal("Error", "Failed to delete user. Please try again.");
+                }
+            }
+        };
+
+        // Functions to handle payroll actions
+        const handleViewPayroll = (user) => {
+            const daysWorked = user.daysWorked || 0;
+            const overtime = user.overtime || 0;
+            const bonus = user.bonus || 0;
+            const grossSalary = user.grossSalary || 0;
+            const tax = user.tax || 0;
+
+            const netSalary = (grossSalary + overtime + bonus) - tax;
+
+            document.getElementById('payrollFullName').innerText = `${user.firstName} ${user.lastName}`;
+            document.getElementById('payrollDaysWorked').innerText = daysWorked;
+            document.getElementById('payrollGross').innerText = `₵${grossSalary.toFixed(2)}`;
+            document.getElementById('payrollOvertime').innerText = `₵${overtime.toFixed(2)}`;
+            document.getElementById('payrollBonus').innerText = `₵${bonus.toFixed(2)}`;
+            document.getElementById('payrollTax').innerText = `₵${tax.toFixed(2)}`;
+            document.getElementById('payrollNet').innerText = `₵${netSalary.toFixed(2)}`;
+            viewPayrollModal.classList.remove('hidden');
+        };
+
+        const handleEditPayroll = (user) => {
+            document.getElementById('editPayrollUserId').value = user.id;
+            document.getElementById('editDaysWorked').value = user.daysWorked || 0;
+            document.getElementById('editOvertime').value = user.overtime || 0;
+            document.getElementById('editBonus').value = user.bonus || 0;
+            document.getElementById('editGrossSalary').value = user.grossSalary || 0;
+            document.getElementById('editTax').value = user.tax || 0;
+            document.getElementById('editRevenue').value = user.revenue || 0;
+            
+            if (user.payrollDate) {
+                document.getElementById('editPayrollDate').value = user.payrollDate;
+            } else {
+                document.getElementById('editPayrollDate').value = new Date().toISOString().substring(0, 10);
+            }
+            
+            editPayrollModal.classList.remove('hidden');
+        };
+
+        const handleDeletePayroll = async (userDocId) => {
+            const confirmed = await showModal("Confirm Deletion", "Are you sure you want to delete this user's payroll data?", true);
+            if (confirmed) {
+                try {
+                    const user = allUsers.find(u => u.id === userDocId);
+                    user.daysWorked = 0;
+                    user.overtime = 0;
+                    user.bonus = 0;
+                    user.grossSalary = 0;
+                    user.tax = 0;
+                    user.revenue = 0;
+                    user.payrollDate = new Date().toISOString().substring(0, 10);
+                    user.paymentStatus = 'Pending';
+                    await putDataInStore('managedUsers', user);
+                    logSystemActivity(`Deleted payroll data for "${user.firstName} ${user.lastName}".`, 'Payroll Deleted');
+                    showModal("Success", "User's payroll data reset successfully!");
+                    refreshUI();
+                } catch (e) {
+                    console.error("Error deleting payroll data: ", e);
+                    showModal("Error", "Failed to delete payroll data. Please try again.");
+                }
+            }
+        };
+        
+        const handleTogglePaymentStatus = async (userDocId, currentStatus) => {
+            const newStatus = currentStatus === 'Paid' ? 'Pending' : 'Paid';
+            const confirmed = await showModal("Confirm Status Change", `Are you sure you want to change the status to '${newStatus}'?`, true);
+            if (confirmed) {
+                try {
+                    const user = allUsers.find(u => u.id === userDocId);
+                    if (user) {
+                        user.paymentStatus = newStatus;
+                        await putDataInStore('managedUsers', user);
+                        logSystemActivity(`Changed payment status for "${user.firstName} ${user.lastName}" to "${newStatus}".`, 'Payment Status Updated');
+                        showModal("Success", `Payment status updated to '${newStatus}' successfully!`);
+                        refreshUI();
+                    }
+                } catch (e) {
+                    console.error("Error updating payment status:", e);
+                    showModal("Error", "Failed to update payment status. Please try again.");
+                }
+            }
+        };
+        
+        const handleToggleIncidentStatus = async (incidentId, currentStatus) => {
+            const statusOrder = ['Open', 'In Progress', 'Closed'];
+            const currentIndex = statusOrder.indexOf(currentStatus);
+            const nextIndex = (currentIndex + 1) % statusOrder.length;
+            const newStatus = statusOrder[nextIndex];
+
+            const confirmed = await showModal("Confirm Status Change", `Are you sure you want to change the incident status to '${newStatus}'?`, true);
+            if (confirmed) {
+                try {
+                    const incident = allIncidents.find(i => i.id === incidentId);
+                    if (incident) {
+                        incident.status = newStatus;
+                        await putDataInStore('incidents', incident);
+                        logSystemActivity(`Changed incident status for incident ID "${incidentId}" to "${newStatus}".`, 'Incident Status Updated');
+                        showModal("Success", `Incident status updated to '${newStatus}' successfully!`);
+                        refreshUI();
+                    }
+                } catch (e) {
+                    console.error("Error updating incident status:", e);
+                    showModal("Error", "Failed to update incident status. Please try again.");
+                }
+            }
+        };
+
+
+        // Dashboard Metrics Calculation
+        const renderDashboardMetrics = () => {
+            // Total Incidents
+            document.getElementById('totalIncidentsMetric').innerText = allIncidents.length;
+
+            // Total Users
+            document.getElementById('totalUsersMetric').innerText = allUsers.length;
+
+            // Total Guards
+            document.getElementById('totalGuardsMetric').innerText = allGuards.length;
+            
+            // Total Clients (based on unique guard locations)
+            const uniqueLocations = new Set();
+            allGuards.forEach(guard => {
+                if (guard.location) {
+                    uniqueLocations.add(guard.location.toLowerCase());
+                }
+            });
+            document.getElementById('totalClientsMetric').innerText = uniqueLocations.size;
+
+            // Total Salaries Paid
+            const totalSalariesPaid = allUsers.filter(user => user.paymentStatus === 'Paid')
+                .reduce((sum, user) => {
+                    const overtime = user.overtime || 0;
+                    const bonus = user.bonus || 0;
+                    const grossSalary = user.grossSalary || 0;
+                    const tax = user.tax || 0;
+                    const netSalary = (grossSalary + overtime + bonus) - tax;
+                    return sum + netSalary;
+                }, 0);
+            document.getElementById('totalSalariesPaidMetric').innerText = `₵${totalSalariesPaid.toFixed(2)}`;
+            
+            // Total Revenue (Sum of all user revenues)
+            const totalRevenue = allUsers.reduce((sum, user) => sum + (user.revenue || 0), 0);
+            document.getElementById('totalRevenueMetric').innerText = `₵${totalRevenue.toFixed(2)}`;
+        };
+
+        // --- CHARTING LOGIC ---
+
+        const aggregateIncidentsByMonth = () => {
+            const incidentsByMonth = {};
+            const last12Months = [];
+            const today = new Date();
+            today.setDate(1); // Set to the first day of the month
+
+            // Generate last 12 months keys (e.g., "Sep 2024")
+            for (let i = 0; i < 12; i++) {
+                const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                const monthYear = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                last12Months.unshift(monthYear); // Add to the start
+                incidentsByMonth[monthYear] = 0;
+            }
+
+            // Populate the counts
+            allIncidents.forEach(incident => {
+                const date = new Date(incident.timestamp);
+                const monthYear = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                if (incidentsByMonth.hasOwnProperty(monthYear)) {
+                    incidentsByMonth[monthYear] += 1;
+                }
+            });
+
+            const labels = last12Months;
+            const data = last12Months.map(month => incidentsByMonth[month] || 0);
+
+            return { labels, data };
+        };
+
+        const renderMonthlyIncidentsChart = () => {
+            const data = aggregateIncidentsByMonth();
+            const ctx = document.getElementById('incidentChart').getContext('2d');
+
+            // Destroy existing chart instance if it exists
+            if (monthlyIncidentsChart) {
+                monthlyIncidentsChart.destroy();
+            }
+
+            monthlyIncidentsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Reported Incidents',
+                        data: data.data,
+                        borderColor: 'rgba(10, 35, 81, 1)', // sagittarius-blue
+                        backgroundColor: 'rgba(255, 215, 0, 0.2)', // sagittarius-gold light fill
+                        borderWidth: 3,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointBackgroundColor: 'rgba(255, 215, 0, 1)' // sagittarius-gold
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            suggestedMax: Math.max(...data.data) + 2,
+                            ticks: {
+                                precision: 0
+                            },
+                            title: {
+                                display: true,
+                                text: 'Number of Incidents',
+                                color: 'var(--sagittarius-blue)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Month',
+                                color: 'var(--sagittarius-blue)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        };
+        
+        // NEW CLIENT CHART LOGIC
+        // Note: The global variable `monthlyClientsChart` is already declared with 'let' at the top of the script.
+        const aggregateClientsByMonth = () => {
+            const clientRegistrationsByMonth = {};
+            const last12Months = [];
+            const today = new Date();
+            today.setDate(1);
+
+            // 1. Generate last 12 months keys
+            for (let i = 0; i < 12; i++) {
+                const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                const monthYear = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                last12Months.unshift(monthYear);
+                clientRegistrationsByMonth[monthYear] = 0;
+            }
+
+            // 2. Determine the earliest 'registration' date for each unique location
+            const locationRegistrationDates = {};
+            allUsers.forEach(user => {
+                const location = user.location?.toLowerCase();
+                const createdAt = user.createdAt; // ISO string
+
+                // Only track users with a defined location (acting as client sites)
+                if (location && createdAt) {
+                    if (!locationRegistrationDates[location] || createdAt < locationRegistrationDates[location]) {
+                        locationRegistrationDates[location] = createdAt;
+                    }
+                }
+            });
+            
+            // 3. Aggregate based on the earliest registration date
+            Object.values(locationRegistrationDates).forEach(isoDate => {
+                const date = new Date(isoDate);
+                const monthYear = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                if (clientRegistrationsByMonth.hasOwnProperty(monthYear)) {
+                    clientRegistrationsByMonth[monthYear] += 1;
+                }
+            });
+
+            const labels = last12Months;
+            const data = last12Months.map(month => clientRegistrationsByMonth[month] || 0);
+
+            return { labels, data };
+        };
+
+        const renderMonthlyClientsChart = () => {
+            const data = aggregateClientsByMonth();
+            const ctx = document.getElementById('clientChart').getContext('2d');
+
+            if (monthlyClientsChart) {
+                monthlyClientsChart.destroy();
+            }
+
+            monthlyClientsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'New Client Locations Registered',
+                        data: data.data,
+                        backgroundColor: 'rgba(255, 215, 0, 0.8)', // sagittarius-gold
+                        borderColor: 'rgba(10, 35, 81, 1)', // sagittarius-blue
+                        borderWidth: 1,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            suggestedMax: Math.max(...data.data) + 1,
+                            ticks: {
+                                precision: 0
+                            },
+                            title: {
+                                display: true,
+                                text: 'Number of Clients',
+                                color: 'var(--sagittarius-blue)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Month',
+                                color: 'var(--sagittarius-blue)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        };
+        
+        // --- END CHARTING LOGIC ---
+
+
+        // Render Incident List
+        const renderIncidents = (incidents) => {
+            const listContainer = document.getElementById('incidentsList');
+            listContainer.innerHTML = '';
+
+            // Sort incidents by timestamp
+            incidents.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            if (incidents.length === 0) {
+                const noIncidentsRow = document.createElement('tr');
+                noIncidentsRow.innerHTML = `<td colspan="8" class="text-center text-gray-500 py-4">No incidents reported yet.</td>`;
+                listContainer.appendChild(noIncidentsRow);
+            } else {
+                incidents.forEach(incident => {
+                    const date = new Date(incident.timestamp);
+                    const formattedDate = date.toLocaleDateString();
+                    const formattedTime = date.toLocaleTimeString();
+                    const status = incident.status || 'Open';
+                    let statusColor = 'bg-gray-400';
+                    if (status === 'Open') statusColor = 'bg-blue-500';
+                    else if (status === 'In Progress') statusColor = 'bg-yellow-500';
+                    else if (status === 'Closed') statusColor = 'bg-green-500';
+
+                    const resolutionText = incident.resolutionComment ? incident.resolutionComment.substring(0, 50) + (incident.resolutionComment.length > 50 ? '...' : '') : 'N/A';
+
+
+                    const incidentRow = document.createElement('tr');
+                    incidentRow.innerHTML = `
+                        <td>${incident.title}</td>
+                        <td>${incident.description}</td>
+                        <td>${incident.location}</td>
+                        <td>${incident.reporter}</td>
+                        <td>${formattedDate} ${formattedTime}</td>
+                        <td>${incident.attachments.length > 0 ? incident.attachments.length : 'None'}</td>
+                        <td>${resolutionText}</td>
+                        <td class="flex space-x-2 whitespace-nowrap items-center">
+                            <button class="status-btn px-3 py-1 rounded-full text-xs text-white ${statusColor}">${status}</button>
+                            <button class="view-btn bg-sagittarius-blue text-sagittarius-white px-3 py-1 rounded-full text-xs hover:scale-105 transition-transform duration-200">View</button>
+                            <button class="edit-btn bg-sagittarius-gold text-sagittarius-blue px-3 py-1 rounded-full text-xs hover:scale-105 transition-transform duration-200">Edit</button>
+                            <button class="delete-btn bg-red-500 text-white px-3 py-1 rounded-full text-xs hover:scale-105 transition-transform duration-200">Delete</button>
+                        </td>
+                    `;
+                    listContainer.appendChild(incidentRow);
+                    
+                    incidentRow.querySelector('.view-btn').addEventListener('click', () => handleView(incident));
+                    incidentRow.querySelector('.edit-btn').addEventListener('click', () => handleEdit(incident));
+                    incidentRow.querySelector('.delete-btn').addEventListener('click', () => handleDelete(incident.id));
+                    incidentRow.querySelector('.status-btn').addEventListener('click', () => handleToggleIncidentStatus(incident.id, incident.status));
+                });
+            }
+        };
+
+        // Render User List
+        const renderUsers = (users) => {
+            const listContainer = document.getElementById('usersList');
+            listContainer.innerHTML = '';
+            
+            if (users.length === 0) {
+                listContainer.innerHTML = `<p class="text-center text-gray-500 py-4">No users found.</p>`;
+                return;
+            }
+
+            users.forEach(user => {
+                const userElement = document.createElement('div');
+                userElement.className = 'p-4 bg-sagittarius-white/95 rounded-lg shadow-sm border border-sagittarius-gold/50 flex items-center justify-between';
+                userElement.innerHTML = `
+                    <div>
+                        <p class="font-semibold text-sagittarius-blue">${user.firstName} ${user.lastName}</p>
+                        <p class="text-sm text-sagittarius-blue/80 capitalize">${user.role}</p>
+                    </div>
+                    <div class="flex flex-wrap space-x-2">
+                        <button class="view-user-btn bg-sagittarius-blue text-sagittarius-white px-3 py-1 rounded-full text-xs hover:scale-105 transition-transform duration-200">View</button>
+                        <button class="edit-user-btn bg-sagittarius-gold text-sagittarius-blue px-3 py-1 rounded-full text-xs hover:scale-105 transition-transform duration-200">Edit</button>
+                        <button class="delete-user-btn bg-red-500 text-white px-3 py-1 rounded-full text-xs hover:scale-105 transition-transform duration-200">Delete</button>
+                    </div>
+                `;
+                listContainer.appendChild(userElement);
+                userElement.querySelector('.view-user-btn').addEventListener('click', () => handleViewUser(user));
+                userElement.querySelector('.edit-user-btn').addEventListener('click', () => handleEditUser(user));
+                userElement.querySelector('.delete-user-btn').addEventListener('click', () => handleDeleteUser(user.id));
+            });
+        };
+
+        const handleViewUser = (user) => {
+            document.getElementById('viewEmployeeId').innerText = user.employeeId;
+            document.getElementById('viewFullName').innerText = `${user.firstName} ${user.lastName}`;
+            document.getElementById('viewPhoneNumber').innerText = user.phoneNumber;
+            document.getElementById('viewNationalIdType').innerText = user.nationalIdType;
+            document.getElementById('viewIdNumber').innerText = user.idNumber;
+            document.getElementById('viewEmail').innerText = user.emailAddress;
+            document.getElementById('viewResidentialAddress').innerText = user.residentialAddress;
+            document.getElementById('viewHomeTown').innerText = user.homeTown;
+            document.getElementById('viewGuarantorName').innerText = user.guarantorName;
+            document.getElementById('viewGuarantorPhoneNumber').innerText = user.guarantorPhoneNumber;
+            document.getElementById('viewUserRole').innerText = user.role;
+            document.getElementById('viewDepartment').innerText = user.department;
+            document.getElementById('viewAssignedShift').innerText = user.assignedShift || 'N/A';
+            document.getElementById('viewLocationUser').innerText = user.location;
+            document.getElementById('viewEmploymentDate').innerText = user.employmentDate;
+            viewUserModal.classList.remove('hidden');
+        };
+        
+        const handleUserSearch = () => {
+            const query = userSearchInput.value.toLowerCase();
+            const filteredUsers = allUsers.filter(user => {
+                const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
+                const employeeId = user.employeeId.toLowerCase();
+                const idNumber = user.idNumber.toLowerCase();
+                
+                return fullName.includes(query) || employeeId.includes(query) || idNumber.includes(query);
+            });
+            renderUsers(filteredUsers);
+        };
+
+        // Render Payroll table
+        const renderPayroll = (users) => {
+            const payrollList = document.getElementById('payrollList');
+            payrollList.innerHTML = '';
+            
+            users.forEach(user => {
+                const daysWorked = user.daysWorked || 0;
+                const overtime = user.overtime || 0;
+                const bonus = user.bonus || 0;
+                const grossSalary = user.grossSalary || 0;
+                const tax = user.tax || 0;
+                const revenue = user.revenue || 0;
+
+                const netSalary = (grossSalary + overtime + bonus) - tax;
+                const paymentStatus = user.paymentStatus || 'Pending';
+                const statusColor = paymentStatus === 'Paid' ? 'bg-green-500' : 'bg-yellow-500';
+                const statusText = paymentStatus === 'Paid' ? 'Paid' : 'Pending';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${user.employeeId}</td>
+                    <td>${user.firstName} ${user.lastName}</td>
+                    <td>₵${revenue.toFixed(2)}</td>
+                    <td>${daysWorked}</td>
+                    <td>₵${grossSalary.toFixed(2)}</td>
+                    <td>₵${overtime.toFixed(2)}</td>
+                    <td>₵${bonus.toFixed(2)}</td>
+                    <td>₵${tax.toFixed(2)}</td>
+                    <td>₵${netSalary.toFixed(2)}</td>
+                    <td><button class="toggle-status-btn px-3 py-1 rounded-full text-xs text-white ${statusColor}">${statusText}</button></td>
+                    <td class="flex space-x-2 whitespace-nowrap">
+                        <button class="view-payroll-btn bg-sagittarius-blue text-sagittarius-white px-3 py-1 rounded-full text-xs hover:scale-105 transition-transform duration-200">View</button>
+                        <button class="edit-payroll-btn bg-sagittarius-gold text-sagittarius-blue px-3 py-1 rounded-full text-xs hover:scale-105 transition-transform duration-200">Edit</button>
+                        <button class="delete-payroll-btn bg-red-500 text-white px-3 py-1 rounded-full text-xs hover:scale-105 transition-transform duration-200">Delete</button>
+                    </td>
+                `;
+                payrollList.appendChild(row);
+                
+                row.querySelector('.view-payroll-btn').addEventListener('click', () => handleViewPayroll({
+                    ...user,
+                    grossSalary,
+                    overtime,
+                    bonus,
+                    tax,
+                    netSalary
+                }));
+                row.querySelector('.edit-payroll-btn').addEventListener('click', () => handleEditPayroll(user));
+                row.querySelector('.delete-payroll-btn').addEventListener('click', () => handleDeleteUser(user.id));
+                row.querySelector('.toggle-status-btn').addEventListener('click', () => handleTogglePaymentStatus(user.id, user.paymentStatus));
+            });
+        };
+
+
+        // Render Guard Tracking List
+        const renderGuards = (guards) => {
+            const guardList = document.getElementById('guardList');
+            guardList.innerHTML = '';
+            if (guards.length === 0) {
+                guardList.innerHTML = `<p class="text-center text-gray-500 py-4">No guards are currently active.</p>`;
+            } else {
+                guards.forEach(guard => {
+                    const statusColor = 'text-green-500'; // Assuming they are active for this demo
+                    const guardElement = document.createElement('div');
+                    guardElement.className = 'p-4 bg-sagittarius-white/95 rounded-lg shadow-sm border border-sagittarius-gold/50 flex items-center justify-between';
+                    guardElement.innerHTML = `
+                        <div>
+                            <p class="font-semibold text-sagittarius-blue">${guard.firstName} ${guard.lastName}</p>
+                            <p class="text-sm text-sagittarius-blue/80">Phone: ${guard.phoneNumber}</p>
+                            <p class="text-sm text-sagittarius-blue/80">Shift: ${guard.assignedShift || 'N/A'}</p>
+                            <p class="text-sm text-sagittarius-blue/80">Location: ${guard.location || 'N/A'}</p>
+                        </div>
+                        <p class="text-sm font-bold ${statusColor}">Active</p>
+                    `;
+                    guardList.appendChild(guardElement);
+                });
+            }
+        };
+        
+        // Handle search input on the payroll page
+        const handleSearch = () => {
+            const query = payrollSearchInput.value.toLowerCase();
+            const filteredUsers = allUsers.filter(user => {
+                const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
+                const employeeId = user.employeeId.toLowerCase();
+                const idNumber = user.idNumber.toLowerCase();
+                
+                return fullName.includes(query) || employeeId.includes(query) || idNumber.includes(query);
+            });
+            renderPayroll(filteredUsers);
+        };
+
+        // System Logs Module Functions
+        const renderSystemLogs = () => {
+            // Populate years dropdown
+            const currentYear = new Date().getFullYear();
+            reportYearSelect.innerHTML = '';
+            for (let i = currentYear; i >= currentYear - 5; i--) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.innerText = i;
+                reportYearSelect.appendChild(option);
+            }
+            // Set current month and year as default
+            reportMonthSelect.value = new Date().getMonth() + 1;
+            reportYearSelect.value = currentYear;
+
+            // Add event listeners for download buttons
+            downloadIncidentsBtn.addEventListener('click', downloadIncidents);
+            downloadUsersBtn.addEventListener('click', downloadUsers);
+            downloadPayrollBtn.addEventListener('click', downloadPayroll);
+            downloadLogsBtn.addEventListener('click', downloadLogs);
+        };
+        
+        const renderLogs = (logs) => {
+            logsList.innerHTML = '';
+            if (logs.length === 0) {
+                logsList.innerHTML = `<p class="text-center text-gray-500 py-4">No system activity logged yet.</p>`;
+            } else {
+                logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                logs.forEach(log => {
+                    const date = new Date(log.timestamp);
+                    const formattedDate = date.toLocaleDateString();
+                    const formattedTime = date.toLocaleTimeString();
+
+                    const logItem = document.createElement('div');
+                    logItem.className = 'p-3 border-b border-sagittarius-blue/10 last:border-b-0';
+                    logItem.innerHTML = `
+                        <p class="text-sm font-medium text-sagittarius-blue">${log.activity}</p>
+                        <p class="text-xs text-sagittarius-blue/60 mt-1">${formattedDate} ${formattedTime}</p>
+                    `;
+                    logsList.appendChild(logItem);
+                });
+            }
+        };
+
+        const downloadCSV = (data, filename) => {
+            const csvData = new Blob([data], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(csvData);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+            showModal("Download Complete", `${filename} has been downloaded.`);
+        };
+
+        const downloadIncidents = () => {
+            const selectedMonth = parseInt(reportMonthSelect.value);
+            const selectedYear = parseInt(reportYearSelect.value);
+
+            const filteredIncidents = allIncidents.filter(incident => {
+                const incidentDate = new Date(incident.timestamp);
+                return incidentDate.getMonth() + 1 === selectedMonth && incidentDate.getFullYear() === selectedYear;
+            });
+            
+            if (filteredIncidents.length === 0) {
+                showModal("No Data", `No incident data found for ${reportMonthSelect.options[reportMonthSelect.selectedIndex].text} ${selectedYear}.`);
+                return;
+            }
+
+            const header = ["id", "title", "description", "location", "reporter", "timestamp", "attachments", "resolutionComment", "status"];
+            const csvRows = [header.join(',')];
+            filteredIncidents.forEach(incident => {
+                const row = [
+                    incident.id,
+                    `"${incident.title.replace(/"/g, '""')}"`,
+                    `"${incident.description.replace(/"/g, '""')}"`,
+                    `"${incident.location.replace(/"/g, '""')}"`,
+                    `"${incident.reporter.replace(/"/g, '""')}"`,
+                    incident.timestamp,
+                    incident.attachments.length > 0 ? incident.attachments.join('; ') : 'None',
+                    `"${(incident.resolutionComment || '').replace(/"/g, '""')}"`,
+                    incident.status
+                ];
+                csvRows.push(row.join(','));
+            });
+            downloadCSV(csvRows.join('\n'), `incidents_report_${selectedYear}-${selectedMonth}.csv`);
+        };
+
+        const downloadUsers = () => {
+            if (allUsers.length === 0) {
+                showModal("No Data", "No user data found.");
+                return;
+            }
+
+            const header = ["id", "employeeId", "firstName", "lastName", "phoneNumber", "nationalIdType", "idNumber", "emailAddress", "residentialAddress", "homeTown", "guarantorName", "guarantorPhoneNumber", "role", "department", "assignedShift", "location", "employmentDate"];
+            const csvRows = [header.join(',')];
+            allUsers.forEach(user => {
+                const row = [
+                    user.id,
+                    user.employeeId,
+                    `"${user.firstName.replace(/"/g, '""')}"`,
+                    `"${user.lastName.replace(/"/g, '""')}"`,
+                    `"${user.phoneNumber.replace(/"/g, '""')}"`,
+                    `"${user.nationalIdType.replace(/"/g, '""')}"`,
+                    `"${user.idNumber.replace(/"/g, '""')}"`,
+                    `"${user.emailAddress.replace(/"/g, '""')}"`,
+                    `"${user.residentialAddress.replace(/"/g, '""')}"`,
+                    `"${user.homeTown.replace(/"/g, '""')}"`,
+                    `"${user.guarantorName.replace(/"/g, '""')}"`,
+                    `"${user.guarantorPhoneNumber.replace(/"/g, '""')}"`,
+                    user.role,
+                    user.department,
+                    user.assignedShift || 'N/A',
+                    `"${user.location.replace(/"/g, '""')}"`,
+                    user.employmentDate
+                ];
+                csvRows.push(row.join(','));
+            });
+            downloadCSV(csvRows.join('\n'), `user_report.csv`);
+        };
+
+        const downloadPayroll = () => {
+            const selectedMonth = parseInt(reportMonthSelect.value);
+            const selectedYear = parseInt(reportYearSelect.value);
+            
+            const filteredPayroll = allUsers.filter(user => {
+                if (!user.payrollDate) return false;
+                const payrollDate = new Date(user.payrollDate);
+                return payrollDate.getMonth() + 1 === selectedMonth && payrollDate.getFullYear() === selectedYear;
+            });
+
+            if (filteredPayroll.length === 0) {
+                showModal("No Data", `No payroll data found for ${reportMonthSelect.options[reportMonthSelect.selectedIndex].text} ${selectedYear}.`);
+                return;
+            }
+
+            const header = ["id", "employeeId", "fullName", "revenue", "daysWorked", "grossSalary", "overtime", "bonus", "tax", "netSalary", "paymentStatus", "payrollDate"];
+            const csvRows = [header.join(',')];
+            
+            filteredPayroll.forEach(user => {
+                const daysWorked = user.daysWorked || 0;
+                const overtime = user.overtime || 0;
+                const bonus = user.bonus || 0;
+                const grossSalary = user.grossSalary || 0;
+                const tax = user.tax || 0;
+                const revenue = user.revenue || 0;
+
+                const netSalary = (grossSalary + overtime + bonus) - tax;
+
+                const row = [
+                    user.id,
+                    user.employeeId,
+                    `"${user.firstName} ${user.lastName}"`,
+                    revenue.toFixed(2),
+                    daysWorked,
+                    grossSalary.toFixed(2),
+                    overtime.toFixed(2),
+                    bonus.toFixed(2),
+                    tax.toFixed(2),
+                    netSalary.toFixed(2),
+                    user.paymentStatus,
+                    user.payrollDate
+                ];
+                csvRows.push(row.join(','));
+            });
+            downloadCSV(csvRows.join('\n'), `payroll_report_${selectedYear}-${selectedMonth}.csv`);
+        };
+        
+        const downloadLogs = () => {
+            if (allLogs.length === 0) {
+                showModal("No Data", `No system logs found.`);
+                return;
+            }
+
+            const header = ["timestamp", "activity"];
+            const csvRows = [header.join(',')];
+            allLogs.forEach(log => {
+                const row = [
+                    log.timestamp,
+                    `"${log.activity.replace(/"/g, '""')}"`
+                ];
+                csvRows.push(row.join(','));
+            });
+            downloadCSV(csvRows.join('\n'), `system_logs.csv`);
+        };
+
+        // Settings Page Logic
+        const companyNameInput = document.getElementById('companyNameInput');
+        const logoUrlInput = document.getElementById('logoUrlInput');
+        const companyNameDisplay = document.getElementById('companyNameDisplay');
+        const companyLogoSvg = document.querySelector('.flex.items-center.space-x-2.mb-8 svg');
+
+        companySettingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newCompanyName = companyNameInput.value.trim();
+            const newLogoUrl = logoUrlInput.value.trim();
+            
+            try {
+                const settings = {
+                    id: 1, // Use a fixed ID for the single settings object
+                    companyName: newCompanyName,
+                    logoUrl: newLogoUrl,
+                    darkMode: document.getElementById('darkModeToggle').checked
+                };
+                await putDataInStore('settings', settings);
+
+                if (newCompanyName) {
+                    companyNameDisplay.innerText = newCompanyName;
+                }
+                if (newLogoUrl) {
+                    // For a real app, this would be more complex (e.g., img element)
+                    showModal("Logo Not Supported", "Changing logo URL is a conceptual feature. In a real app, this would update an an image tag.");
+                }
+                logSystemActivity(`Changed company settings.`, 'Settings Updated');
+                showModal("Settings Saved", "Company settings have been updated.");
+            } catch (e) {
+                showModal("Error", "Failed to save settings.");
+            }
+        });
+
+        darkModeToggle.addEventListener('change', async () => {
+            document.body.classList.toggle('dark');
+            try {
+                const settings = (await getDataFromStore('settings')).find(s => s.id === 1) || {id: 1, companyName: 'Sagittarius Security'};
+                settings.darkMode = document.body.classList.contains('dark');
+                await putDataInStore('settings', settings);
+                if (settings.darkMode) {
+                    logSystemActivity('Toggled to Dark Mode.', 'Settings Updated');
+                } else {
+                    logSystemActivity('Toggled to Light Mode.', 'Settings Updated');
+                }
+            } catch (e) {
+                console.error("Error saving theme setting:", e);
+            }
+        });
+
+
+        // Initial setup on window load
+        window.onload = async () => {
+            await openDB();
+            
+            // Start the clock interval
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            // Check if user is already logged in from a previous session
+            if (checkLoginStatus()) {
+                loginFormModal.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                refreshUI();
+            } else {
+                loginFormModal.classList.remove('hidden');
+            }
+            
+            // Add event listener for payroll search
+            payrollSearchInput.addEventListener('input', handleSearch);
+            // Add event listener for user search
+            userSearchInput.addEventListener('input', handleUserSearch);
+            // Render system logs specific elements
+            renderSystemLogs();
+        };
+
+    </script>
 </body>
 </html>
-
-
-
